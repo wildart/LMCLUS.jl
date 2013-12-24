@@ -1,7 +1,11 @@
 module LMCLUS
 
 export  lmclus,
+        kittler,
+        distanceToManifold
         LMCLUSParameters
+
+include("kittler.jl")
 
 type LMCLUSParameters
     max_dim::Int
