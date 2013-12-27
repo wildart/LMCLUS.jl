@@ -20,7 +20,18 @@ type LMCLUSParameters
     sampling_factor::Float64
     histogram_sampling::Bool
 
-    LMCLUSParameters(dims)=new(dims, 100, 0, 20, 1.0, 0.0001, 0.1, 0, 3, 0.003, false)
+    LMCLUSParameters(dims) = new(dims, 100, 0, 20, 1.0, 0.0001, 0.1, 0, 3, 0.003, false)
+end
+
+type Separation
+    origin::Vector{Float64}
+    basis::Matrix{Float64}
+    depth::Float64
+    discriminability::Float64
+    threshold::Float64
+    globalmin::Float64
+    
+    Separation() = new(Array(Float64,0), Array(Float64,0,0), -Inf, -Inf, Inf, Inf)
 end
 
 import Base.show
@@ -54,54 +65,104 @@ function lmclus(data::Matrix{Float64}, params::LMCLUSParameters)
     
     # Main loop through dataset
     while length(data_index) > params.noise_size
-        nonClusterPoints, separations, Noise, SepDim = find_manifold(ds, params, data_index)
-        
+        best_points, separations, separation_dimension, rest_points, noise = find_manifold(ds, params, data_index)
     end
     
     ndims(ds)
 end
 
 function find_manifold(data::Matrix{Float64}, params::LMCLUSParameters, index::Array{Int64,1})
-    Noise = false
-    nonClusterPoints = Array(Int, 0)
-    SepDim = 0  # dimension in which separation was found
+    noise = false
+    rest_points = Int[]
+    separations = Separation[]
+    separation_dimension = 0  # dimension in which separation was found
+    dist(x) = distance_to_manifold(x - best_sep.origin, best_sep.basis)
     
-    for lm_dim = 1:params.max_dim+1
-        if Noise
+    for lm_dim = 1:(params.max_dim+1)
+        if noise
             break
         end
         
         while true
             best_sep = find_best_separation(data, params, index, lm_dim)
-            info("BEST_BOUND:" )
+            
+            criteria = best_sep.depth*best_sep.discriminability
+            println("BEST_BOUND: ", criteria " (", params.best_bound, ")")
+            if criteria < params.best_bound
+                break
+            end
+            separation_dimension = lm_dim
+
+            best_points = Int[]
+            for i=1:size(data,1)
+                # point i has distances less than the threshold value
+                if dist(data[i,:]) < best_sep.threshold
+                    push!(best_points, i)
+                else
+                    push!(rest_points, i)
+                end
+            end
+            
+            best_points_size = size(best_points,1)
+            println("Separated points: ", best_points_size)
+                            
+            # small amount of points is considered noise
+            if best_points_size < params.noise_size
+                noise = true
+                println("noise less than ", params.noise_size," points")
+                break
+            end
+            
+            push!(separations, best_sep)
         end
-    
     end
     
-    Noise, nonClusterPoints, SepDim
+    best_points, separations, separation_dimension, rest_points, noise
 end
 
 function find_best_separation(data::Matrix{Float64}, params::LMCLUSParameters, lm_dim::Int)
     data_size, full_space_dim = size(data)
 
-    println("data size=", data_size,"   linear manifold dim=", lm_dim,"   space dim=", full_space_dim,"   searching for separation ...")
+    println("data size=", data_size,"   linear manifold dim=", 
+            lm_dim,"   space dim=", full_space_dim,"   searching for separation ...")
     println("---------------------------------------------------------------------------------")
 
-    # determine number of samples of lm_dim+1 points
+    # determine number of samples of lm_dim+1 points    
     Q = sample_quantity( lm_dim, full_space_dim, data_size, params)
+    
+    # sample Q times SubSpaceDim+1 points
+    best_sep = Separation()
     for i = 1:Q
         try
-            sample = sample_points(data, lm_dim)
-            origin, basis = form_basis(sample)
-            distances = calculate_distance_to_manifold(data, basis, origin, params)
-            # Define histogram size
-            bins = hist_bin_size(distances, params)
-            depth, discriminability, threshold, globalmin = kittler(distances)
+            sep = find_separation(data, param, lm_dim)
+            if sep.depth*sep.discriminability > best_sep.depth*best_sep.discriminability
+                best_sep = sep
+            end
         catch
             continue
         end
     end
+    
+    criteria = best_sep.depth*best_sep.discriminability
+    if criteria <= 0.
+        println("no good histograms to separate data !!!")
+    else 
+        println("Separation: width=", best_sep.discriminability, 
+        "  depth=", best_sep.depth, "  criteria=", criteria)
+    end
+    best_sep
+end
 
+# Find separation criteria
+function find_separation(data::Matrix{Float64}, params::LMCLUSParameters, lm_dim::Int)
+    # Sample LM_Dim+1 points
+    sample = sample_points(data, lm_dim+1)
+    origin, basis = form_basis(sample)
+    distances = calculate_distance_to_manifold(data, basis, origin, params)
+    # Define histogram size
+    bins = hist_bin_size(distances, params)
+    depth, discriminability, threshold, globalmin = kittler(distances)
+    Separation(origin, basis, depth, discriminability, threshold, globalmin)
 end
 
 # Determine the number of times to sample the data in order to guaranty
@@ -140,7 +201,7 @@ function sample_quantity(lm_dim::Int, full_space_dim::Int, data_size::Int, param
 end
 
 # Sample uniformly k integers from the integer range 1:n, making sure that
-# the same integer is not sampled twice. the function returns an intger vector
+# the same integer is not sampled twice. the function returns an integer vector
 # containing the sampled integers.
 function randperm2(n, k)
     if n < k
@@ -159,18 +220,17 @@ end
 # Sample randomly lm_dim+1 points from the dataset, making sure
 # that the same point is not sampled twice. the function will return
 # a index vector, specifying the index of the sampled points.
-function sample_points(data::Matrix{Float64}, d::Int)
-    if d <= 0
-        error("Dimension size must be positive")
+function sample_points(data::Matrix{Float64}, n::Int)
+    if n <= 0
+        error("Sample size must be positive")
     end
     data_rows, data_cols = size(data)
-    total = d+1
     I = Int[]
     hashes = Set{Uint}()
     hashes_size = 0
 
     # get sample indexes
-    J = randperm2(data_rows, total-size(I,1))
+    J = randperm2(data_rows, n-size(I,1))
     for idx in J
         h = hash(A[idx,:])
         push!(hashes, h)
@@ -183,8 +243,8 @@ function sample_points(data::Matrix{Float64}, d::Int)
         end
     end
 
-    # Sample is smaller then expeced
-    if size(I,1) != total
+    # Sample is smaller then expected
+    if size(I,1) != n
         # Resample from the rest of data
         for idx in setdiff(randperm(data_rows),I)
             h = hash(A[idx,:])
@@ -201,7 +261,7 @@ function sample_points(data::Matrix{Float64}, d::Int)
 
     # If at this point we do not have proper sample
     # then our dataset doesn't have enough unique rows
-    if size(I,1) != total
+    if size(I,1) != n
         error("Dataset doesn't have enough unique points, decrease number of points")
     end
     I
@@ -231,12 +291,12 @@ end
 # Forming basis from sample. The idea is to pick a point (origin) from the sampled points
 # and generate the basis vectors by subtracting all other points from the origin,
 # creating a basis matrix with one less vector than the number of sampled points.
-# Then perform orthagonalization through Gramm-Schmidt process.
+# Then perform orthogonalization through Gram-Schmidt process.
 # Note: Resulting basis is transposed.
 function form_basis(data::Matrix{Float64})
-    origin = data[1,:]
+    origin = vec(data[1,:])
     basis = broadcast(-, data[2:,:], origin)
-    origin', orthogonalize(basis)
+    origin, orthogonalize(basis)
 end
 
 
@@ -252,7 +312,30 @@ end
 # Determine the distance of each point in the data set from to a linear manifold,
 function calculate_distance_to_manifold(data::Matrix{Float64}, basis::Matrix{Float64},
     oring::Vector{Float64}, params::LMCLUSParameters)
+    
+    if params.histogram_sampling
+        Z_01=2.576  # Z random variable, confidence interval 0.99
+        delta_p=0.2
+        delta_mu=0.1
+        P=1.0/params.cluster_number
+        Q=1-P
+        n1=(Q/P)*((Z_01*Z_01)/(delta_p*delta_p))
+        p=( P<=Q ? P : Q )
+        n2=(Z_01*Z_01)/(delta_mu*delta_mu*p)
+        n3= ( n1 >= n2 ? n1 : n2 )
+        n4= int(n3)
+        n= ( size(data, 1) <= n4 ? size(data, 1)-1 : n4 )
 
+        sampleIndex = sample_points(data, n)
+        sample_data = data[sampleIndex, :]
+    else
+        sample_data = data
+    end
+    
+    # vector to hold distances of points from basis
+    dist = x -> distance_to_manifold(x - origin, basis)
+    distances = mapsplice(dist, sample_data)
+    distances
 end
 
 # Calculates distance from point to manifold defined by basis
@@ -261,13 +344,12 @@ function distance_to_manifold(point::Vector{Float64}, basis::Matrix{Float64})
     d_v = basis * point
     c = norm(point)
     b = norm(d_v)
+    d_n = 0.0
     try
         d_n = sqrt(c*c-b*b)
         if d_n>1000000000
             d_n = 0.0
         end
-    catch
-        d_n = 0
     end
     d_n
 end
