@@ -1,4 +1,4 @@
-function kittler(xs::Vector{Float}; bins=20)
+function kittler(xs::Vector{Float64}, bins=20)
     # find maximum and minimum
     maxX = maximum(xs)
     minX = minimum(xs)
@@ -15,4 +15,6 @@ function kittler(xs::Vector{Float}; bins=20)
     σ1 = 0
     σ2 = 0
 
+
+    depth, discriminability, threshold, globalmin
 end
