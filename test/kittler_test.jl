@@ -1,4 +1,4 @@
-#using LMCLUS
+using LMCLUS
 using Distributions
 using Base.Test
 

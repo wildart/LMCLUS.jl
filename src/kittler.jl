@@ -49,14 +49,14 @@ function kittler(xs::Vector{Float64}; bins=20, tol=1.0e-5)
     #for T=1:N
     #    P1[T] = sum(H[r1(T)])
     #    if P1[T] != 0.0
-    #        μ1[T] = sum(broadcast(*, H[r1(T)], r1(T))) / P1[T]
-    #        Var1[T] = sum(broadcast(*, broadcast(*,(r1(T)-μ1[T]),(r1(T)-μ1[T])), H[r1(T)])) / P1[T]
+    #        μ1[T] = sum( H[r1(T)].*r1(T) ) / P1[T]
+    #        Var1[T] = sum( ((r1(T)-μ1[T]).^2).*H[r1(T)] ) / P1[T]
     #    end
     #    P1
     #    P2[T] = sum(H[r2(T)])
     #    if P2[T] != 0.0
-    #        μ2[T] = sum(broadcast(*, H[r2(T)], r2(T))) / P2[T]
-    #        Var2[T] = sum(broadcast(*, broadcast(*,(r2(T)-μ2[T]),(r2(T)-μ2[T])), H[r2(T)])) / P2[T]
+    #        μ2[T] = sum( H[r2(T)].*r2(T) ) / P2[T]
+    #        Var2[T] = sum( ((r2(T)-μ2[T]).^2).*H[r2(T)] ) / P2[T]
     #    end
     #end
 
@@ -75,7 +75,7 @@ function kittler(xs::Vector{Float64}; bins=20, tol=1.0e-5)
     #threshold2 = (r[min_index] + r[min_index+1])/2 # or from histogram bins' edges
     discriminability = (abs(μ1[min_index]-μ2[min_index]))/(sqrt(Var1[min_index]+Var2[min_index]))
 
-    depth, discriminability, threshold, global_min#, threshold2
+    depth, discriminability, threshold, global_min, r, c#, threshold2
 end
 
 function find_global_min(J::Vector{Float64}, tol)
