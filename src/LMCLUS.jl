@@ -117,7 +117,6 @@ function find_manifold(data::Matrix{Float64}, index::Array{Int,1}, params::LMCLU
     data_points = Int[]
     separations = Separation[]
     separation_dimension = 0  # dimension in which separation was found
-    dist(x, sep) = distance_to_manifold(vec(x) - sep.origin, sep.basis)
     
     for lm_dim = 1:(params.max_dim+1)
         if noise
@@ -138,7 +137,8 @@ function find_manifold(data::Matrix{Float64}, index::Array{Int,1}, params::LMCLU
             manifold_points_size = length(manifold_points)
             for i=1:manifold_points_size
                 # point i has distances less than the threshold value
-                if dist(data[manifold_points[i],:], best_sep) < best_sep.threshold
+                d = distance_to_manifold(vec(data[manifold_points[i],:]), best_sep.origin, best_sep.basis)
+                if d < best_sep.threshold
                     push!(best_points, i)
                 else
                     push!(data_points, i)
@@ -378,9 +378,16 @@ function calculate_distance_to_manifold(data::Matrix{Float64},
     end
     
     # vector to hold distances of points from basis
-    dist(x) = distance_to_manifold(x - origin, basis)
-    distances = mapslices(dist, sample_data, 2)
-    vec(distances)
+    #dist(x::Vector{Float64}) = distance_to_manifold(x, origin, basis)
+    #distances = mapslices(dist, sample_data, 2)
+    #vec(distances)
+    
+    sample_data_size = size(sample_data, 1)
+    distances = zeros(Float64,sample_data_size)
+    for i=1:sample_data_size
+        distances[i] = distance_to_manifold(vec(sample_data[i,:]), origin, basis)
+    end
+    distances
 end
 
 # Calculates distance from point to manifold defined by basis
@@ -398,5 +405,9 @@ function distance_to_manifold(point::Vector{Float64}, basis::Matrix{Float64})
     end
     d_n
 end
+
+distance_to_manifold(point::Vector{Float64}, 
+    origin::Vector{Float64}, 
+    basis::Matrix{Float64}) = distance_to_manifold(point - origin, basis)
 
 end # module
