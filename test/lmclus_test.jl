@@ -39,6 +39,8 @@ point = vec([1.0,1.0,1.0])
 #LMCLUS.find_best_separation(data, params, 1)
 
 # Main test
+#include("src/LMCLUS.jl")
+#using LMCLUS
 p = LMCLUSParameters(5)
 ds = readdlm("test/testData", ',')
 manifolds = lmclus(ds[:,1:end-1],p)

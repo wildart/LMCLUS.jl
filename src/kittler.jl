@@ -75,7 +75,7 @@ function kittler(xs::Vector{Float64}; bins=20, tol=1.0e-5)
     #threshold2 = (r[min_index] + r[min_index+1])/2 # or from histogram bins' edges
     discriminability = (abs(μ1[min_index]-μ2[min_index]))/(sqrt(Var1[min_index]+Var2[min_index]))
 
-    depth, discriminability, threshold, global_min, r, c#, threshold2
+    depth, discriminability, threshold, min_index, r, c#, threshold2
 end
 
 function find_global_min(J::Vector{Float64}, tol)
