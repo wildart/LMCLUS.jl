@@ -6,64 +6,10 @@ export  lmclus,
         LMCLUSParameters,
         Separation
 
+include("types.jl")
+include("params.jl")
 include("kittler.jl")
 
-type LMCLUSParameters
-    max_dim::Int
-    cluster_number::Int
-    hist_bin_size::Int
-    noise_size::Int
-    best_bound::Float64
-    error_bound::Float64
-    max_bin_portion::Float64
-    random_seed::Int64
-    heuristic::Int
-    sampling_factor::Float64
-    histogram_sampling::Bool
-end
-LMCLUSParameters(dims) = LMCLUSParameters(dims, 100, 0, 20, 1.0, 0.0001, 0.1, 0, 3, 0.01, false)
-
-import Base.show
-show(io::IO, p::LMCLUSParameters) =
-    print(io, """Linear Manifold Clustering parameters:
-    Max dimension (max_dim): $(p.max_dim)
-    Number of clusters (cluster_number): $(p.cluster_number)
-    Noise size (noise_size): $(p.noise_size)
-    Best bound (best_bound): $(p.best_bound)
-    Error bound (error_bound): $(p.error_bound)
-    Sample points for distance histogram (histogram_sampling): $(p.histogram_sampling)
-    Histogram bins (hist_bin_size): $(p.hist_bin_size)
-    Maximum histogram bin size (max_bin_portion): $(p.max_bin_portion)
-    Sampling heuristic (heuristic): $(p.heuristic)
-    Sampling factor (sampling_factor): $(p.sampling_factor)
-    Random seed (random_seed): $(p.random_seed) (0 - random seed)
-    """)
-
-type Separation
-    origin::Vector{Float64}
-    basis::Matrix{Float64}
-    depth::Float64
-    discriminability::Float64
-    threshold::Float64
-    globalmin::Int
-    hist_range::Vector{Float64}
-    hist_count::Vector{Int}
-end
-Separation() = Separation(Float64[], Array(Float64,0,0), -Inf, eps(), Inf, -1, Float64[], Int[])
-separation_criteria(sep::Separation) = sep.depth*sep.discriminability
-
-type Manifold
-    dimension::Int
-    points::Vector{Int}
-    separation::Separation
-end
-show(io::IO, m::Manifold) = 
-    print(io, """Manifold: 
-        Dimension: $(m.dimension)
-        Size: $(length(m.points))
-        θ: $(m.separation.threshold)
-        μ: $(m.separation.origin')
-    """)
 #
 # Linear Manifold Clustering
 #
@@ -74,20 +20,24 @@ function lmclus(data::Matrix{Float64}, params::LMCLUSParameters)
     else
         srand(params.random_seed)
     end
-    
+
     data_rows, data_cols = size(data)
     data_index = [1:data_rows]
     cluster_number = 0
     manifolds = Manifold[]
-    
+
     # Main loop through dataset
     while length(data_index) > params.noise_size
         # Find one manifold
         manifold_points, best_separation, separation_dimension, rest_points, noise = find_manifold(data, data_index, params)
         cluster_number += 1
-        
+
+        if params.zero_d_search
+            # Look for small dimensional embedding in a found manifold
+        end
+
         info(@sprintf("found cluster # %d, size=%d, dim=%d", cluster_number, length(manifold_points), separation_dimension))
-        
+
         if !(noise || separation_dimension == 0)
             m = Manifold(separation_dimension, manifold_points, best_separation)
             push!(manifolds, m)
@@ -96,12 +46,12 @@ function lmclus(data::Matrix{Float64}, params::LMCLUSParameters)
             noise = Manifold(0, manifold_points, Separation())
             push!(manifolds, noise)
         end
-        
+
         # Stop clustering if found specified number of clusters
         if length(manifolds) == params.cluster_number
             break
         end
-        
+
         # Look at the rest of the dataset
         data_index = rest_points
     end
@@ -120,7 +70,7 @@ function find_manifold(data::Matrix{Float64}, index::Array{Int,1}, params::LMCLU
         if noise
             break
         end
-        
+
         while true
             separation = find_best_separation(data[manifold_points,:], separation_dimension, params)
             criteria = separation_criteria(separation)
@@ -147,11 +97,11 @@ function find_manifold(data::Matrix{Float64}, index::Array{Int,1}, params::LMCLU
                     push!(data_points, i)
                 end
             end
-            
+
             manifold_points = best_points
             manifold_points_size = length(manifold_points)
             println("Separated points: ", manifold_points_size)
-                            
+
             # small amount of points is considered noise
             if manifold_points_size < params.noise_size
                 noise = true
@@ -160,26 +110,26 @@ function find_manifold(data::Matrix{Float64}, index::Array{Int,1}, params::LMCLU
             end
         end
     end
-    
+
     manifold_points, best_sep, best_dim, data_points, noise
 end
 
 # LMCLUS main function:
 # 1- sample trial linear manifolds by sampling points from the data
 # 2- create distance histograms of the data points to each trial linear manifold
-# 3- of all the linear manifolds sampled select the one whose associated distance histogram 
+# 3- of all the linear manifolds sampled select the one whose associated distance histogram
 #    shows the best separation between to modes.
 function find_best_separation(data::Matrix{Float64}, lm_dim::Int, params::LMCLUSParameters)
     data_size, full_space_dim = size(data)
 
     println("---------------------------------------------------------------------------------")
-    println("data size=", data_size,"   linear manifold dim=", 
+    println("data size=", data_size,"   linear manifold dim=",
             lm_dim,"   space dim=", full_space_dim,"   searching for separation ...")
     println("---------------------------------------------------------------------------------")
 
-    # determine number of samples of lm_dim+1 points    
+    # determine number of samples of lm_dim+1 points
     Q = sample_quantity( lm_dim, full_space_dim, data_size, params)
-    
+
     # sample Q times SubSpaceDim+1 points
     best_sep = Separation()
     for i = 1:Q
@@ -193,12 +143,12 @@ function find_best_separation(data::Matrix{Float64}, lm_dim::Int, params::LMCLUS
             continue
         end
     end
-    
+
     criteria = separation_criteria(best_sep)
     if criteria <= 0.
         println("no good histograms to separate data !!!")
-    else 
-        println("Separation: width=", best_sep.discriminability, 
+    else
+        println("Separation: width=", best_sep.discriminability,
         "  depth=", best_sep.depth, "  criteria=", criteria)
     end
     best_sep
@@ -209,7 +159,7 @@ function find_separation(data::Matrix{Float64}, lm_dim::Int, params::LMCLUSParam
     # Sample LM_Dim+1 points
     sample = sample_points(data, lm_dim+1)
     origin, basis = form_basis(data[sample,:])
-    
+
     # Define sample for distance calculation
     if params.histogram_sampling
         Z_01=2.576  # Z random variable, confidence interval 0.99
@@ -229,7 +179,7 @@ function find_separation(data::Matrix{Float64}, lm_dim::Int, params::LMCLUSParam
     else
         sample_data = data
     end
-    
+
     distances = distance_to_manifold(sample_data, origin, basis)
     # Define histogram size
     bins = hist_bin_size(distances, params)
@@ -346,7 +296,7 @@ end
 # Note: Resulting basis is transposed.
 function form_basis(data::Matrix{Float64})
     origin = data[1,:]
-    basis = broadcast(-, data[2:,:], origin)
+    basis = data[2:end,:] .- origin
     vec(origin), orthogonalize(basis)
 end
 
@@ -393,18 +343,18 @@ function distance_to_manifold(point::Vector{Float64}, basis::Matrix{Float64})
     d_n
 end
 
-distance_to_manifold(point::Vector{Float64}, 
-    origin::Vector{Float64}, 
+distance_to_manifold(point::Vector{Float64},
+    origin::Vector{Float64},
     basis::Matrix{Float64}) = distance_to_manifold(point - origin, basis)
 
 # Determine the distance of each point in the dataset from to a linear manifold
-function distance_to_manifold(data::Matrix{Float64}, 
+function distance_to_manifold(data::Matrix{Float64},
     origin::Vector{Float64}, basis::Matrix{Float64})
-    
+
     #dist(x::Vector{Float64}) = distance_to_manifold(x, origin, basis)
     #distances = mapslices(dist, sample_data, 2)
     #vec(distances)
-    
+
     data_size = size(data, 1)
     # vector to hold distances of points from basis
     distances = zeros(Float64,data_size)
