@@ -1,6 +1,5 @@
-LMCLUS.jl
+LMCLUS.jl [![Build Status](https://travis-ci.org/wildart/LMCLUS.jl.svg?branch=master)](https://travis-ci.org/wildart/LMCLUS.jl)
 =========
-Version: 0.0.1
 
 Julia package for Linear Manifold Clustering
 
@@ -26,9 +25,9 @@ Sampling heuristic (heuristic): 3
 Sampling factor (sampling_factor): 0.01
 Random seed (random_seed): 0 (0 - random seed)
 
-julia> ds = readdlm("test/testData", ',')[:,1:end-1] # remove last index column
+julia> ds = readdlm(Pkg.dir("LMCLUS", "test", "testData"), ',')
 
-julia> manifolds = lmclus(ds,p) 
+julia> manifolds = lmclus(ds[:,1:end-1]',p) # remove last index column
 3-element Array{Manifold,1}:
  Manifold: 
     Dimension: 1
