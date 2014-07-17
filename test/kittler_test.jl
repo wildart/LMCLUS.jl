@@ -32,5 +32,5 @@ module TestKittler
 	@test_approx_eq_eps res[3] 64.0 5
 
 	# Try unimodal histogram
-	@test_throws ErrorException kittler(rand(Normal(1, 10), N), bins=bins)
+	@test_throws ErrorException kittler(rand(Normal(1, 10), N), bins=10)
 end
