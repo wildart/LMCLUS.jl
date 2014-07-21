@@ -14,9 +14,10 @@ type LMCLUSParameters
     sampling_factor::Float64
     histogram_sampling::Bool
     zero_d_search::Bool
+    basis_alignment::Bool
     log_level::Int
 
-    LMCLUSParameters(max_dim) = new(1, max_dim, 100, 0, 20, 1.0, 0.0001, 0.1, 0, 3, 0.01, false, true, 0)
+    LMCLUSParameters(max_dim) = new(1, max_dim, 100, 0, 20, 1.0, 0.0001, 0.1, 0, 3, 0.01, false, false, false, 0)
 end
 
 show(io::IO, p::LMCLUSParameters) =
@@ -34,8 +35,8 @@ show(io::IO, p::LMCLUSParameters) =
     Sampling factor (sampling_factor): $(p.sampling_factor)
     Random seed (random_seed): $(p.random_seed) (0 - random seed)
     0D manifold search (zero_d_search): $(p.zero_d_search)
-    Log level (log_level): $(p.log_level)
-    """)
+    Manifold cluster basis alignment (basis_alignment): $(p.basis_alignment)
+    Log level (log_level): $(p.log_level)""")
 
 # simple logger
 function LOG(p::LMCLUSParameters, lvl, msg...)

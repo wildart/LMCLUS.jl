@@ -38,6 +38,8 @@ module TestLMCLUS
 
 	# Test clustering
 	p = LMCLUSParameters(5)
+	p.basis_alignment = true
+	p.log_level = 1
 	ds = readdlm(Pkg.dir("LMCLUS", "test", "testData"), ',')
 	manifolds = lmclus(ds[:,1:end-1]',p)
 	@test length(manifolds) == 3

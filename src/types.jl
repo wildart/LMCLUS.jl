@@ -1,8 +1,8 @@
-import Base.show
+import Base: show, dump, mean
+import MultivariateStats: indim, outdim, projection
 
+## histogram separation type
 type Separation
-    origin::Vector{Float64}
-    basis::Matrix{Float64}
     depth::Float64
     discriminability::Float64
     threshold::Float64
@@ -10,18 +10,45 @@ type Separation
     hist_range::Vector{Float64}
     hist_count::Vector{Int}
 end
-Separation() = Separation(Float64[], Array(Float64,0,0), -Inf, eps(), Inf, -1, Float64[], Int[])
-separation_criteria(sep::Separation) = sep.depth*sep.discriminability
+Separation() = Separation(-Inf, eps(), Inf, -1, Float64[], Int[])
 
+# properties
+criteria(sep::Separation) = sep.depth*sep.discriminability
+threshold(sep::Separation) = sep.threshold
+
+function show(io::IO, S::Separation)
+    print(io, "Separation($(criteria(S)))")
+end
+
+
+## manifold type
 type Manifold
-    dimension::Int
+    d::Int
+    μ::Vector{Float64}
+    proj::Matrix{Float64}
     points::Vector{Int}
     separation::Separation
 end
-show(io::IO, m::Manifold) =
-    print(io, """Manifold:
-        Dimension: $(m.dimension)
-        Size: $(length(m.points))
-        θ: $(m.separation.threshold)
-        μ: $(m.separation.origin')
-    """)
+Manifold() = Manifold(0,Float64[],zeros(0,0),Int[],Separation())
+
+# properties
+indim(M::Manifold) = M.d
+outdim(M::Manifold) = length(M.points)
+labels(M::Manifold) = M.points
+separation(M::Manifold) = M.separation
+mean(M::Manifold) = M.μ
+projection(M::Manifold) = M.proj
+
+function show(io::IO, M::Manifold)
+    print(io, "Manifold (dim = $(indim(M)), size = $(outdim(M)))")
+end
+function dump(io::IO, M::Manifold)
+    show(io, M)
+    println(io)
+    println(io, "threshold (θ): $(threshold(separation(M))) ")
+    println(io, "translation (μ): ")
+    Base.showarray(io, mean(M)', header=false, repr=false)
+    println(io)
+    println(io, "basis: ")
+    Base.showarray(io, projection(M), header=false, repr=false)
+end

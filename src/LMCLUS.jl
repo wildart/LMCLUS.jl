@@ -1,14 +1,28 @@
 ﻿module LMCLUS
 
+using MultivariateStats
+
 export  lmclus,
+        LMCLUSParameters,
+
         kittler,
         distance_to_manifold,
-        LMCLUSParameters,
-        Separation
 
+        Separation,
+        criteria,
+        threshold,
+
+        Manifold,
+        indim,
+        outdim,
+        labels,
+        separation,
+        origin,
+        basis
+
+include("types.jl")
 include("params.jl")
 include("utils.jl")
-include("types.jl")
 include("kittler.jl")
 
 #
@@ -30,23 +44,29 @@ function lmclus(X::Matrix{Float64}, params::LMCLUSParameters)
     # Main loop through dataset
     while length(index) > params.noise_size
         # Find one manifold
-        manifold_points, best_separation, separation_dimension, remains, noise = find_manifold(X, index, params)
+        best_manifold, remains, noise = find_manifold(X, index, params)
         cluster_number += 1
 
-        if params.zero_d_search
-            # Look for small dimensional embedding in a found manifold
+        if params.zero_d_search && indim(best_manifold) == 1
+            LOG(params, 2, "Searching zero dimensional manifold")
+            # TODO: Look for small dimensional embedding in a found manifold
         end
 
-        LOG(params, 1, @sprintf("found cluster # %d, size=%d, dim=%d", cluster_number, length(manifold_points), separation_dimension))
-
-        if !(noise || separation_dimension == 0)
-            m = Manifold(separation_dimension, manifold_points, best_separation)
-            push!(manifolds, m)
-        else
-            # Form from noise manifold of 0-dimension
-            noise = Manifold(0, manifold_points, Separation())
-            push!(manifolds, noise)
+        if params.basis_alignment
+            if indim(best_manifold) > 0
+                R = fit(PCA, X[:, labels(best_manifold)]; method=:svd, maxoutdim=indim(best_manifold))
+            else
+                R = fit(PCA, X[:, labels(best_manifold)]; method=:svd)
+            end
+            pr = @sprintf("%.5f", principalratio(R))
+            LOG(params, 2, "aligning manifold basis: $pr")
+            best_manifold = Manifold(outdim(R), mean(R), projection(R),
+                                    labels(best_manifold), separation(best_manifold))
         end
+
+        LOG(params, 1, @sprintf("found cluster # %d, size=%d, dim=%d",
+                cluster_number, length(labels(best_manifold)), indim(best_manifold)))
+        push!(manifolds, best_manifold)
 
         # Stop clustering if found specified number of clusters
         if length(manifolds) == params.cluster_number
@@ -67,18 +87,16 @@ function find_manifold(X::Matrix{Float64}, index::Array{Int,1}, params::LMCLUSPa
     copy!(selected, index)
     best_sep = Separation()
     best_dim = 0  # dimension in which separation was found
+    best_origin = Float64[]
+    best_basis = zeros(0, 0)
 
-    for separation_dimension = params.min_dim:params.max_dim
-        if noise
-            break
-        end
+    for sep_dim = params.min_dim:params.max_dim
 
         while true
-            separation = find_best_separation(X[:, selected], separation_dimension, params)
-            criteria = separation_criteria(separation)
-            LOG(params, 2, "BEST_BOUND: ", criteria, " (", params.best_bound, ")")
-            if criteria < params.best_bound
-                if separation_dimension == params.max_dim
+            origin, basis, separation = find_best_separation(X[:, selected], sep_dim, params)
+            LOG(params, 2, "BEST_BOUND: ", criteria(separation), " (", params.best_bound, ")")
+            if criteria(separation) < params.best_bound
+                if sep_dim == params.max_dim
                     LOG(params, 2, "no separation")
                 else
                     LOG(params, 2, "no separation, increasing dimension ...")
@@ -86,13 +104,18 @@ function find_manifold(X::Matrix{Float64}, index::Array{Int,1}, params::LMCLUSPa
                 break
             end
 
+            # new separation found
             best_sep = separation
-            best_dim = separation_dimension
+            best_dim = sep_dim
+            best_origin = origin
+            best_basis = basis
             best_points = Int[]
+
+            # filter separated points
             for i=1:length(selected)
                 idx = selected[i]
                 # point i has distances less than the threshold value
-                d = distance_to_manifold(X[:, idx], best_sep.origin, best_sep.basis)
+                d = distance_to_manifold(X[:, idx], best_origin, best_basis)
                 if d < best_sep.threshold
                     push!(best_points, idx)
                 else
@@ -110,9 +133,13 @@ function find_manifold(X::Matrix{Float64}, index::Array{Int,1}, params::LMCLUSPa
                 LOG(params, 2, "Separated points: ", length(selected))
             end
         end
+
+        if noise # no more points left - finish clustering
+            break
+        end
     end
 
-    selected, best_sep, best_dim, filtered, noise
+    Manifold(best_dim, best_origin, best_basis, selected, best_sep), filtered, noise
 end
 
 # LMCLUS main function:
@@ -133,13 +160,20 @@ function find_best_separation(X::Matrix{Float64}, lm_dim::Int, params::LMCLUSPar
 
     # sample Q times SubSpaceDim+1 points
     best_sep = Separation()
+    best_origin = Float64[]
+    best_basis = zeros(0, 0)
     LOG(params, 3, "Start sampling: ", Q)
     for i = 1:Q
+        # Sample LM_Dim+1 points
+        sample = sample_points(X, lm_dim+1)
+        origin, basis = form_basis(X[:, sample])
         try
-            sep = find_separation(X, lm_dim, params)
-            LOG(params, 3, "SEP: ", separation_criteria(sep), ", BSEP:", separation_criteria(best_sep))
-            if separation_criteria(sep) > separation_criteria(best_sep)
+            sep = find_separation(X, origin, basis, params)
+            LOG(params, 3, "SEP: ", criteria(sep), ", BSEP:", criteria(best_sep))
+            if criteria(sep) > criteria(best_sep)
                 best_sep = sep
+                best_origin = origin
+                best_basis = basis
             end
         catch e
             LOG(params, 4, e.msg)
@@ -147,22 +181,19 @@ function find_best_separation(X::Matrix{Float64}, lm_dim::Int, params::LMCLUSPar
         end
     end
 
-    criteria = separation_criteria(best_sep)
-    if criteria <= 0.
+    cr = criteria(best_sep)
+    if cr <= 0.
         LOG(params, 2, "no good histograms to separate data !!!")
     else
         LOG(params, 2, "Separation: width=", best_sep.discriminability,
-        "  depth=", best_sep.depth, "  criteria=", criteria)
+        "  depth=", best_sep.depth, "  criteria=", cr)
     end
-    return best_sep
+    return best_origin, best_basis, best_sep
 end
 
 # Find separation criteria
-function find_separation(X::Matrix{Float64}, lm_dim::Int, params::LMCLUSParameters)
-    # Sample LM_Dim+1 points
-    sample = sample_points(X, lm_dim+1)
-    origin, basis = form_basis(X[:, sample])
-
+function find_separation(X::Matrix{Float64}, origin::Vector{Float64},
+                        basis::Matrix{Float64}, params::LMCLUSParameters)
     # Define sample for distance calculation
     if params.histogram_sampling
         Z_01=2.576  # Z random variable, confidence interval 0.99
@@ -184,8 +215,7 @@ function find_separation(X::Matrix{Float64}, lm_dim::Int, params::LMCLUSParamete
     distances = distance_to_manifold(X, origin, basis)
     # Define histogram size
     bins = hist_bin_size(distances, params)
-    sep = kittler(distances, bins=bins)
-    Separation(origin, basis, sep[1], sep[2], sep[3], sep[4], sep[5], sep[6])
+    return kittler(distances, bins=bins)
 end
 
 # Determine the number of times to sample the data in order to guaranty
