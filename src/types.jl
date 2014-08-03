@@ -1,5 +1,6 @@
 import Base: show, dump, mean
-import MultivariateStats: indim, outdim, projection
+import StatsBase: indim, outdim
+import MultivariateStats: projection
 
 ## histogram separation type
 type Separation

@@ -1,5 +1,6 @@
 ﻿module LMCLUS
 
+using StatsBase
 using MultivariateStats
 
 export  lmclus,
@@ -17,8 +18,8 @@ export  lmclus,
         outdim,
         labels,
         separation,
-        origin,
-        basis
+        mean,
+        projection
 
 include("types.jl")
 include("params.jl")
@@ -53,10 +54,14 @@ function lmclus(X::Matrix{Float64}, params::LMCLUSParameters)
         end
 
         if params.basis_alignment
-            if indim(best_manifold) > 0
-                R = fit(PCA, X[:, labels(best_manifold)]; method=:svd, maxoutdim=indim(best_manifold))
+            if indim(best_manifold) > 0 && !params.dim_adjustment
+                R = fit(PCA, X[:, labels(best_manifold)];
+                        method=:svd,
+                        maxoutdim=indim(best_manifold))
             else
-                R = fit(PCA, X[:, labels(best_manifold)]; method=:svd)
+                R = fit(PCA, X[:, labels(best_manifold)];
+                        method=:svd,
+                        pratio = params.dim_adjustment_ratio > 0.0 ? params.dim_adjustment_ratio : 0.99)
             end
             pr = @sprintf("%.5f", principalratio(R))
             LOG(params, 2, "aligning manifold basis: $pr")

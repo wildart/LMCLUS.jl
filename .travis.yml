@@ -9,9 +9,7 @@ before_install:
   - sudo apt-get update -qq -y
   - sudo apt-get install libpcre3-dev julia -y
 script:
-  - julia -e 'Pkg.init(); run(`ln -s $(pwd()) $(Pkg.dir())/LMCLUS`); Pkg.pin("LMCLUS"); Pkg.resolve();'
-  - julia -e 'using LMCLUS; @assert isdefined(:LMCLUS); @assert typeof(LMCLUS) === Module'
-  - julia --code-coverage test/runtests.jl
+  - julia -e 'Pkg.init(); Pkg.clone(pwd()); Pkg.test("LMCLUS")'
 after_success:
   - julia -e 'cd(Pkg.dir("LMCLUS")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
 

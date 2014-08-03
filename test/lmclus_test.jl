@@ -40,6 +40,8 @@ module TestLMCLUS
 	p = LMCLUSParameters(5)
 	p.basis_alignment = true
 	p.log_level = 1
+	p.dim_adjustment = true
+	p.dim_adjustment_ratio = 0.95
 	ds = readdlm(Pkg.dir("LMCLUS", "test", "testData"), ',')
 	manifolds = lmclus(ds[:,1:end-1]',p)
 	@test length(manifolds) == 3
