@@ -236,7 +236,7 @@ function sample_quantity(lm_dim::Int, full_space_dim::Int, data_size::Int, param
 
     p = 1.0 / k        # p = probability that 1 point comes from a certain cluster
     P = p^lm_dim       # P = probability that "k+1" points are from the same cluster
-    N = log10(params.error_bound)/log10(1-P)
+    N = abs(log10(params.error_bound)/log10(1-P))
     num_samples = 0
 
     LOG(params, 2, "number of samples by first heuristic=", N, ", by second heuristic=", data_size*params.sampling_factor)
