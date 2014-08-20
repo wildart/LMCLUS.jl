@@ -147,6 +147,8 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
     Manifold(best_dim, best_origin, best_basis, selected, best_sep), filtered, noise
 end
 
+best_separation(t1, t2) = criteria(t1[1]) > criteria(t2[1]) ? t1 : t2
+
 # LMCLUS main function:
 # 1- sample trial linear manifolds by sampling points from the data
 # 2- create distance histograms of the data points to each trial linear manifold
@@ -169,21 +171,36 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int, param
     best_basis = zeros(0, 0)
     LOG(params, 3, "Start sampling: ", Q)
 
-    for i = 1:Q
-        # Sample LM_Dim+1 points
-        sample = sample_points(X, lm_dim+1)
-        origin, basis = form_basis(X[:, sample])
-        try
-            sep = find_separation(X, origin, basis, params)
-            LOG(params, 3, "SEP: ", criteria(sep), ", BSEP:", criteria(best_sep))
-            if criteria(sep) > criteria(best_sep)
-                best_sep = sep
-                best_origin = origin
-                best_basis = basis
+    if nprocs() > 1
+        # Parallel implementation
+        best_sep, best_origin, best_basis = @parallel (best_separation) for i = 1:Q
+            sample = sample_points(X, lm_dim+1)
+            origin, basis = form_basis(X[:, sample])
+            sep = try
+                find_separation(X, origin, basis, params)
+            catch e
+                Separation()
             end
-        catch e
-            LOG(params, 4, e.msg)
-            continue
+            (sep, origin, basis)
+        end
+    else
+        # Single thread implementation
+        for i = 1:Q
+            # Sample LM_Dim+1 points
+            sample = sample_points(X, lm_dim+1)
+            origin, basis = form_basis(X[:, sample])
+            try
+                sep = find_separation(X, origin, basis, params)
+                LOG(params, 3, "SEP: ", criteria(sep), ", BSEP:", criteria(best_sep))
+                if criteria(sep) > criteria(best_sep)
+                    best_sep = sep
+                    best_origin = origin
+                    best_basis = basis
+                end
+            catch e
+                LOG(params, 4, e.msg)
+                continue
+            end
         end
     end
 
@@ -331,3 +348,34 @@ function distance_to_manifold{T<:FloatingPoint}(
 end
 
 end # module
+
+# function distance_to_manifold{T<:FloatingPoint}(
+#     X::Matrix{T}, origin::Vector{T}, basis::Matrix{T})
+
+#     dim, data_size = size(X)
+#     # vector to hold distances of points from basis
+#     distances = zeros(Float64, data_size)
+#     Y = X .- origin
+#     d_v = basis' * Y
+#     @inbounds for i=1:data_size
+#         c = 0.0
+#         b = 0.0
+#         sum = 0.0
+#         for j = 1:dim
+#             v = Y[j,i]
+#             c += v*v
+#             v = d_v[j,i]
+#             b += v*v
+#         end
+#         d_n = 0.0
+#         if c >= b
+#             d_n = sqrt(c-b)
+#             if d_n > 1e10
+#                 warn("Distance is too large: $(point) -> $(d_v) = $(d_n)")
+#                 d_n = 0.0
+#             end
+#         end
+#         distances[i] = d_n
+#     end
+#     return distances
+# end
