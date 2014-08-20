@@ -29,7 +29,7 @@ include("kittler.jl")
 #
 # Linear Manifold Clustering
 #
-function lmclus(X::Matrix{Float64}, params::LMCLUSParameters)
+function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters)
     # Setup RNG
     if params.random_seed == 0
         srand(time_ns())
@@ -85,7 +85,7 @@ function lmclus(X::Matrix{Float64}, params::LMCLUSParameters)
 end
 
 # Find manifold in multiple dimensions
-function find_manifold(X::Matrix{Float64}, index::Array{Int,1}, params::LMCLUSParameters)
+function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, params::LMCLUSParameters)
     noise = false
     filtered = Int[]
     selected = Array(Int, length(index))
@@ -152,7 +152,7 @@ end
 # 2- create distance histograms of the data points to each trial linear manifold
 # 3- of all the linear manifolds sampled select the one whose associated distance histogram
 #    shows the best separation between to modes.
-function find_best_separation(X::Matrix{Float64}, lm_dim::Int, params::LMCLUSParameters)
+function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int, params::LMCLUSParameters)
     full_space_dim, data_size = size(X)
 
     LOG(params, 2, "---------------------------------------------------------------------------------")
@@ -168,6 +168,7 @@ function find_best_separation(X::Matrix{Float64}, lm_dim::Int, params::LMCLUSPar
     best_origin = Float64[]
     best_basis = zeros(0, 0)
     LOG(params, 3, "Start sampling: ", Q)
+
     for i = 1:Q
         # Sample LM_Dim+1 points
         sample = sample_points(X, lm_dim+1)
@@ -197,8 +198,8 @@ function find_best_separation(X::Matrix{Float64}, lm_dim::Int, params::LMCLUSPar
 end
 
 # Find separation criteria
-function find_separation(X::Matrix{Float64}, origin::Vector{Float64},
-                        basis::Matrix{Float64}, params::LMCLUSParameters)
+function find_separation{T<:FloatingPoint}(X::Matrix{T}, origin::Vector{T},
+                        basis::Matrix{T}, params::LMCLUSParameters)
     # Define sample for distance calculation
     if params.histogram_sampling
         Z_01=2.576  # Z random variable, confidence interval 0.99
@@ -252,6 +253,7 @@ function sample_quantity(lm_dim::Int, full_space_dim::Int, data_size::Int, param
             num_samples = int(data_size*params.sampling_factor)
         end
     end
+    num_samples = num_samples > 1 ? num_samples : 1
 
     LOG(params, 2, "number of samples=", num_samples)
 
@@ -263,14 +265,14 @@ end
 # creating a basis matrix with one less vector than the number of sampled points.
 # Then perform orthogonalization through Gram-Schmidt process.
 # Note: Resulting basis is transposed.
-function form_basis(X::Matrix{Float64})
+function form_basis{T<:FloatingPoint}(X::Matrix{T})
     origin = X[:,1]
     basis = X[:,2:end] .- origin
     vec(origin), orthogonalize(basis)
 end
 
 # Modified Gram-Schmidt orthogonalization algorithm
-function orthogonalize(vecs::Matrix{Float64})
+function orthogonalize{T<:FloatingPoint}(vecs::Matrix{T})
     m, n = size(vecs)
     basis = zeros(m, n)
     for j = 1:n
@@ -296,8 +298,12 @@ end
 function distance_to_manifold{T<:FloatingPoint}(point::Vector{T}, basis::Matrix{T})
     d_n = 0.0
     d_v = basis' * point
-    c = sumsq(point)
-    b = sumsq(d_v)
+    c = 0.0 #sumsq(point)
+    b = 0.0 #sumsq(d_v)
+    @inbounds for j = 1:length(point)
+        c += point[j]*point[j]
+        b += d_v[j]*d_v[j]
+    end
     if c >= b
         d_n = sqrt(c-b)
         if d_n > 1e10

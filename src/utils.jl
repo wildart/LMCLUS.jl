@@ -67,12 +67,10 @@ end
 
 # Sum of squares of vector components
 function sumsq{T<:FloatingPoint}(x::Vector{T})
-    s = start(x)
-    (y, s) = next(x, s)
-    sum = y*y
-    while !done(x, s)
-        (y, s) = next(x, s)
-        sum += y*y
+    sum = 0.0
+    @inbounds for i = 1:length(x)
+        v = x[i]
+        sum += v*v
     end
     return sum
 end

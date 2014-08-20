@@ -42,15 +42,16 @@ module TestLMCLUS
 	p.log_level = 1
 	p.dim_adjustment = true
 	p.dim_adjustment_ratio = 0.95
+	p.random_seed = 4572489057
 	ds = readdlm(Pkg.dir("LMCLUS", "test", "testData"), ',')
 	manifolds = lmclus(ds[:,1:end-1]',p)
-	@test length(manifolds) == 3
+	@test length(manifolds) >= 3
 	@test sum(map(m->length(m.points), manifolds)) == size(ds, 1)
 	print("Comparing indexes of manifolds: ")
 	for (i,j) in combinations(1:length(manifolds),2)
 		print("($(i), $(j))")
 		@test length(symdiff(manifolds[i].points, manifolds[j].points)) ==
-				length(manifolds[i].points) + length(manifolds[i].points)
+				length(manifolds[i].points) + length(manifolds[j].points)
 	end
 	println()
 end

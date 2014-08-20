@@ -1,7 +1,7 @@
 # PERFORMS KITTLER'S MINIMAL THRESHOLDING ALGORITH
 # REFERENCES:   J. Kittler & J. Illingworth: "Minimum Error Thresholding"
 #                Pattern Recognition, Vol 19, nr 1. 1986, pp. 41-47.
-function kittler(xs::Vector{Float64}; bins = 20, tol = 1.0e-5)
+function kittler{T<:FloatingPoint}(xs::Vector{T}; bins = 20, tol = 1.0e-5)
     # find maximum and minimum
     maxX = maximum(xs)
     minX = minimum(xs)
@@ -15,16 +15,16 @@ function kittler(xs::Vector{Float64}; bins = 20, tol = 1.0e-5)
     Separation(depth, discriminability, threshold, min_index, r, c)
 end
 
-function kittler(H::Vector{Float64}, minX::Float64, maxX::Float64;  tol=1.0e-5)
+function kittler{T<:FloatingPoint}(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5)
     N = length(H)
 
     # calculate threshold
-    P1 = zeros(Float64, N)
-    P2 = zeros(Float64, N)
-    Mu1 = zeros(Float64, N)
-    Mu2 = zeros(Float64, N)
-    Var1 = zeros(Float64, N)
-    Var2 = zeros(Float64, N)
+    P1 = zeros(T, N)
+    P2 = zeros(T, N)
+    Mu1 = zeros(T, N)
+    Mu2 = zeros(T, N)
+    Var1 = zeros(T, N)
+    Var2 = zeros(T, N)
 
     # recursive defintions
     P1[1] = H[1]
@@ -74,7 +74,7 @@ function kittler(H::Vector{Float64}, minX::Float64, maxX::Float64;  tol=1.0e-5)
     depth, discriminability, threshold, min_index, J
 end
 
-function find_global_min(J::Vector{Float64}, tol)
+function find_global_min{T<:FloatingPoint}(J::Vector{T}, tol)
     N = length(J)
 
     # Mark minima
