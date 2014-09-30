@@ -175,19 +175,26 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int, param
         # Parallel implementation
         best_sep, best_origin, best_basis = @parallel (best_separation) for i = 1:Q
             sample = sample_points(X, lm_dim+1)
-            origin, basis = form_basis(X[:, sample])
-            sep = try
-                find_separation(X, origin, basis, params)
-            catch e
-                Separation()
+            if length(sample) == 0
+                (Separation(), Float64[], zeros(0, 0))
+            else
+                origin, basis = form_basis(X[:, sample])
+                sep = try
+                    find_separation(X, origin, basis, params)
+                catch e
+                    Separation()
+                end
+                (sep, origin, basis)
             end
-            (sep, origin, basis)
         end
     else
         # Single thread implementation
         for i = 1:Q
             # Sample LM_Dim+1 points
             sample = sample_points(X, lm_dim+1)
+            if length(sample) == 0
+                continue
+            end
             origin, basis = form_basis(X[:, sample])
             try
                 sep = find_separation(X, origin, basis, params)

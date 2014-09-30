@@ -60,9 +60,46 @@ function sample_points(X::Matrix{Float64}, n::Int)
     # If at this point we do not have proper sample
     # then our dataset doesn't have enough unique rows
     if length(I) != n
-        error("Dataset doesn't have enough unique points, decrease number of points")
+        warn("Dataset doesn't have enough unique points, decrease number of points")
+        I = Int[]
     end
     I
+end
+
+function sample_points2(X::Matrix{Float64}, n::Int, trycount::Int = 10)
+    if n <= 0
+        error("Sample size must be positive")
+    end
+    data_rows, data_cols = size(X)
+    I = Int[]
+
+    tries = 0
+    while length(I) < n
+        idx = rand(1:data_cols)
+        if idx ∉ I
+            if length(I) > 0  # Check points coordinates
+                found = false
+                for i in I
+                    if X[:, i] == X[:, idx]
+                        tries += 1
+                        found = true
+                        break
+                    end
+                end
+                if found
+                    continue
+                end
+                push!(I, idx)
+                tries = 0
+            else
+                push!(I, idx)
+            end
+        end
+        if tries > trycount
+            error("Dataset doesn't have enough unique points, decrease number of points")
+        end
+    end
+    return I
 end
 
 # Sum of squares of vector components
