@@ -30,7 +30,7 @@ function sample_points(X::Matrix{Float64}, n::Int)
     # get sample indexes
     J = randperm2(data_cols, n-size(I,1))
     for idx in J
-        h = hash(X[:,idx])
+        h = hash(X[:, idx])
         push!(hashes, h)
         hashes_size += 1
         # Find duplicate row in sample and delete it
@@ -45,7 +45,7 @@ function sample_points(X::Matrix{Float64}, n::Int)
     if length(I) != n
         # Resample from the rest of data
         for idx in setdiff(randperm(data_cols),I)
-            h = hash(X[idx,:])
+            h = hash(X[:, idx])
             push!(hashes, h)
             hashes_size += 1
             # Find same rows and delete them
