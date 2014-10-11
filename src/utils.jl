@@ -111,3 +111,68 @@ function sumsq{T<:FloatingPoint}(x::Vector{T})
     end
     return sum
 end
+
+# Bootstrap histogram
+function histbst{T}(x::Vector{T}; bins::Int = 10)
+    x = sort(x)
+    counts = Int[]
+
+    # count points
+    p = x[1]
+    push!(counts, 1)
+    i = 2
+    while i <= length(x)
+        if (x[i] - p) < eps()
+            counts[end] += 1
+            deleteat!(x, i)
+        else
+            p = x[i]
+            i+=1
+            push!(counts, 1)
+        end
+    end
+    @assert length(x) == length(counts)
+
+    S = length(x)
+    L = int(sqrt(S)/2.)
+    if (L < 1)
+        return zeros(T, 0, 0)
+    end
+
+    # generate a mass function
+    emf_x = Array(T, S-2*L)
+    emf_y = Array(T, S-2*L)
+    for i in L+1:S-L
+        emf_x[i-L] = x[i]
+        c = 0 # Cout all points in interval
+        for j in -L:L
+            c += counts[i+j]
+        end
+        emf_y[i-L] = c/(x[i+L]-x[i-L])
+    end
+
+    # generate bins boundaries
+    min_d, max_d = emf_x[1], emf_x[end]
+    bbins = [ min_d + i*(max_d-min_d)/bins for i in 1:bins+1]
+
+    # interpolate and integrate linear piecewise PDF
+    lppdf = Array(T, bins)
+    lppdf[1] = emf_y[1]
+    ilppdf = emf_y[1]
+    for i in 1:bins
+        tail = sum(emf_x .< bbins[i])
+        ly = emf_y[tail]
+        lx = emf_x[tail]
+        gy = emf_y[tail+1]
+        gx = emf_x[tail+1]
+        lppdf[i] = (bbins[i] - lx)*(gy-ly)/(gx-lx)+ly
+        ilppdf += 2*lppdf[i]
+    end
+    lppdf[bins] = emf_y[end]
+    ilppdf += lppdf[bins]
+    ilppdf *=(max_d-min_d)/(2*bins)
+    lppdf /= ilppdf
+    lppdf /= sum(lppdf)
+
+    lppdf
+end
