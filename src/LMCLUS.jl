@@ -6,8 +6,9 @@ using MultivariateStats
 export  lmclus,
         LMCLUSParameters,
 
-        kittler,
+        kittler, otsu,
         distance_to_manifold,
+        histbst,
 
         Separation,
         criteria,
@@ -25,6 +26,7 @@ include("types.jl")
 include("params.jl")
 include("utils.jl")
 include("kittler.jl")
+include("otsu.jl")
 
 #
 # Linear Manifold Clustering
