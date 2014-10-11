@@ -1,7 +1,7 @@
 # PERFORMS KITTLER'S MINIMAL THRESHOLDING ALGORITH
 # REFERENCES:   J. Kittler & J. Illingworth: "Minimum Error Thresholding"
 #                Pattern Recognition, Vol 19, nr 1. 1986, pp. 41-47.
-function kittler{T<:FloatingPoint}(xs::Vector{T}; bins = 20, tol = 1.0e-5)
+function kittler{T<:FloatingPoint}(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug = false)
     # find maximum and minimum
     maxX = maximum(xs)
     minX = minimum(xs)
@@ -10,12 +10,12 @@ function kittler{T<:FloatingPoint}(xs::Vector{T}; bins = 20, tol = 1.0e-5)
     r = linspace(minX,maxX,bins)
     r, c = hist(xs, r)
     H = c/sum(c)
-    depth, discriminability, threshold, min_index, criterion_func = kittler(H, minX, maxX, tol=tol)
+    depth, discriminability, threshold, min_index, criterion_func = kittler(H, minX, maxX, tol=tol, debug=debug)
     depth, discriminability, threshold, min_index, r, c
     Separation(depth, discriminability, threshold, min_index, r, c)
 end
 
-function kittler{T<:FloatingPoint}(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5)
+function kittler{T<:FloatingPoint}(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5, debug = false)
     N = length(H)
 
     # calculate threshold
@@ -63,6 +63,8 @@ function kittler{T<:FloatingPoint}(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5)
             J[T] = 1 + 2*(P1[T]*log(sqrt(Var1[T])) + P2[T]*log(sqrt(Var2[T]))) - 2*(P1[T]*log(P1[T]) + P2[T]*log(P2[T]))
         end
     end
+    debug && println("H: $(H)")
+    debug && println("J: $(J)")
 
     # Global minimum parameters
     depth, global_min = find_global_min(J, tol)
@@ -102,7 +104,7 @@ function find_global_min{T<:FloatingPoint}(J::Vector{T}, tol)
         error("No minimum found, unimode histogram")
     else
         while lmin < N
-            # Dedect flat
+            # Detect flat
             rmin = lmin
             while rmin<N && M[rmin]
                 rmin += 1
