@@ -33,10 +33,21 @@ include("otsu.jl")
 #
 function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters)
     # Setup RNG
-    if params.random_seed == 0
-        srand(time_ns())
+    if nprocs() == 1
+        if params.random_seed == 0
+            srand(time_ns())
+        else
+            srand(params.random_seed)
+        end
     else
-        srand(params.random_seed)
+        if params.random_seed == 0
+            seeds = [time_ns() for i in 1:nprocs()]
+        else
+            seeds = [params.random_seed+10*i for i in 1:nprocs()]
+        end
+        @parallel for i=1:nprocs()
+            srand(seeds[i])
+        end
     end
 
     d, n = size(X)
