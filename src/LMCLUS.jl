@@ -335,12 +335,12 @@ end
 function distance_to_manifold{T<:FloatingPoint}(point::Vector{T}, basis::Matrix{T})
     d_n = 0.0
     d_v = basis' * point
-    c = 0.0 #sumsq(point)
-    b = 0.0 #sumsq(d_v)
-    @inbounds for j = 1:length(point)
-        c += point[j]*point[j]
-        b += d_v[j]*d_v[j]
-    end
+    c = sumabs2(point)
+    b = sumabs2(d_v)
+    # @inbounds for j = 1:length(point)
+    #     c += point[j]*point[j]
+    #     b += d_v[j]*d_v[j]
+    # end
     if c >= b
         d_n = sqrt(c-b)
         if d_n > 1e10
