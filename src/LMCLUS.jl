@@ -107,6 +107,10 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
     best_dim = 0  # dimension in which separation was found
     best_origin = Float64[]
     best_basis = zeros(0, 0)
+    mdl = Inf
+    mdl_m = Manifold()
+    mdl_filtered = Int[]
+    mdl_noise = false
 
     for sep_dim = params.min_dim:params.max_dim
 
@@ -155,9 +159,37 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
         if noise # no more points left - finish clustering
             break
         end
+
+        if params.mdl_heuristic
+            m = Manifold(best_dim, best_origin, best_basis, selected, best_sep)
+            l = MDLength(m, X[:, selected];
+                         P = params.mdl_coding_value, T = :Empirical,
+                         bins = params.noise_size)
+            if l <= mdl
+                LOG(params, 2, "MDL improved: $(l) <= $(mdl) (C: $(length(selected)), D: $(best_dim))")
+                mdl = l
+                mdl_m = m
+                mdl_filtered = copy(filtered)
+                mdl_noise = noise
+            end
+        end
     end
 
-    Manifold(best_dim, best_origin, best_basis, selected, best_sep), filtered, noise
+    # Check final best manifold against MDL
+    best_m = Manifold(best_dim, best_origin, best_basis, selected, best_sep)
+    if params.mdl_heuristic
+        l = MDLength(best_m, X[:, selected];
+                     P = params.mdl_coding_value, T = :Empirical,
+                     bins = params.noise_size)
+        if l > mdl
+            best_m = mdl_m
+            filtered = mdl_filtered
+            noise = mdl_noise
+            LOG(params, 2, "MDL degraded: $(l) > $(mdl) (Rollback to C: $(length(labels(best_m))), D: $(indim(best_m)), F: $(length(filtered)))")
+        end
+    end
+
+    best_m, filtered, noise
 end
 
 best_separation(t1, t2) = criteria(t1[1]) > criteria(t2[1]) ? t1 : t2
@@ -327,7 +359,7 @@ end
 
 # Calculate histogram size
 function hist_bin_size(xs::Vector, params::LMCLUSParameters)
-    params.hist_bin_size == 0 ? int(length(xs) * params.max_bin_portion) : params.hist_bin_size
+    return params.hist_bin_size == 0 ? int(length(xs) * params.max_bin_portion) : params.hist_bin_size
 end
 
 # Calculates distance from point to manifold defined by basis

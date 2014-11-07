@@ -17,10 +17,12 @@ type LMCLUSParameters
     basis_alignment::Bool
     dim_adjustment::Bool
     dim_adjustment_ratio::Float64
+    mdl_heuristic::Bool
+    mdl_coding_value::Float64
     log_level::Int
 
     LMCLUSParameters(max_dim) =
-        new(1, max_dim, 100, 0, 20, 1., 0.0001, 0.1, 0, 3, 0.01, false, false, false, false, 0.99, 0)
+        new(1, max_dim, 100, 0, 20, 1., 0.0001, 0.1, 0, 3, 0.01, false, false, false, false, 0.99, false, 32., 0)
 end
 
 show(io::IO, p::LMCLUSParameters) =
@@ -41,6 +43,8 @@ show(io::IO, p::LMCLUSParameters) =
     Manifold cluster basis alignment (basis_alignment): $(p.basis_alignment)
     Manifold dimensionality adjustment (dim_adjustment): $(p.dim_adjustment)
     Ratio of manifold principal subspace variance (dim_adjustment_ratio): $(p.dim_adjustment_ratio)
+    Use MDL heuristic (mdl_heuristic): $(p.mdl_heuristic)
+    MDL encoding parameter (mdl_heuristic): $(p.mdl_coding_value)
     Log level (log_level): $(p.log_level)""")
 
 # simple logger

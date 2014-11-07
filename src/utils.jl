@@ -176,3 +176,35 @@ function histbst{T}(x::Vector{T}; bins::Int = 10)
 
     lppdf
 end
+
+function MDLength(M::Manifold, X::Matrix; P::Float64 = 32.0, T::Symbol = :Gausian, bins::Int = 20)
+    n = size(X,1)
+    m = indim(M)
+    L = m == 0 ? P*n : P*(m*(n-1) + n) + m*outdim(M)
+
+    E = 0.0
+    if T == :Uniform && m > 0
+        E = log(separation(M).threshold)
+    elseif T == :Gausian && m > 0
+        B = projection(M)
+        OP = (eye(n) - B*B')*X
+        Σ = OP*OP'
+        E = n*(1+log(2π))/2 + log(det(Σ))
+    elseif T == :Empirical # for 0D manifold only empirical estimate is avalible
+        F = svdfact(X)
+        BC = F[:U][:,(m+1):end]
+        Y = BC'*X
+        for i in 1:n-m
+            C = vec(Y[i,:])
+            Cmin, Cmax = extrema(C)
+            Cx = linspace(Cmin, Cmax, bins)
+            h = hist(C,Cx)[2]
+            h /= sum(h)
+            E += -sum(map(x-> x == 0. ? 0. : x*log2(x), h))
+        end
+    else
+        E = outdim(M)*n
+    end
+    #warn("H:$(L) + D:$(E)")
+    return L+E
+end
