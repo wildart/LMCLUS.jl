@@ -169,7 +169,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
             break
         end
 
-        if params.mdl_heuristic && !noise
+        if params.mdl_heuristic && !noise && indim(best_manifold) > 0
             l = MDLength(best_manifold, X[:, selected];
                          P = params.mdl_coding_value, T = :Empirical,
                          bins = params.noise_size)
