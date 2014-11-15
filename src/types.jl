@@ -1,4 +1,4 @@
-import Base: show, dump, mean
+import Base: show, dump, mean, copy
 import StatsBase: indim, outdim
 import MultivariateStats: projection
 
@@ -18,7 +18,7 @@ criteria(sep::Separation) = sep.depth*sep.discriminability
 threshold(sep::Separation) = sep.threshold
 
 function show(io::IO, S::Separation)
-    print(io, "Separation($(criteria(S)))")
+    print(io, "Separation($(criteria(S)), θ=$(threshold(S)))")
 end
 
 
@@ -39,6 +39,7 @@ labels(M::Manifold) = M.points
 separation(M::Manifold) = M.separation
 mean(M::Manifold) = M.μ
 projection(M::Manifold) = M.proj
+copy(M::Manifold) = Manifold(indim(M),mean(M),projection(M),labels(M),separation(M))
 
 function show(io::IO, M::Manifold)
     print(io, "Manifold (dim = $(indim(M)), size = $(outdim(M)))")

@@ -47,14 +47,20 @@ show(io::IO, p::LMCLUSParameters) =
     MDL encoding parameter (mdl_heuristic): $(p.mdl_coding_value)
     Log level (log_level): $(p.log_level)""")
 
-# simple logger
+# Logger
+# RED (31): Error (1)
+# BLUE (34): Info (2)
+# DEBUG (32): Debug (3)
+# DEV (36): Development (4)
+# Trace (33): Trace (5)
 function LOG(p::LMCLUSParameters, lvl, msg...)
     if p.log_level < lvl
         return
     else
         #prefix = lvl == 1 ? "\e[1;34mINFO" : (lvl == 2 ? "\e[1;32mDEBUG" : "\e[1;33mTRACE")
         #println(prefix, ": ", msg..., "\e[0m")
-        prefix = lvl == 1 ? "\e[1;34m" : (lvl == 2 ? "\e[1;32m" : (lvl == 3 ? "\e[1;33m" : "\e[1;31m"))
+        prefix = lvl == 1 ? "\e[1;31m" : (lvl == 2 ? "\e[1;34m" :
+            (lvl == 3 ? "\e[1;32m" : (lvl == 4 ? "\e[1;36m" : "\e[1;33m")))
         println(prefix, msg..., "\e[0m")
     end
 end

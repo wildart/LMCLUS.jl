@@ -58,14 +58,16 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters)
     # Main loop through dataset
     while length(index) > params.noise_size
         # Find one manifold
-        best_manifold, remains, noise = find_manifold(X, index, params)
+        best_manifold, remains = find_manifold(X, index, params)
         cluster_number += 1
 
+        # Perform dimensioality regression
         if params.zero_d_search && indim(best_manifold) == 1
-            LOG(params, 2, "Searching zero dimensional manifold")
+            LOG(params, 4, "Searching zero dimensional manifold")
             # TODO: Look for small dimensional embedding in a found manifold
         end
 
+        # Perform basis alignment through PCA on found cluster
         if params.basis_alignment
             if indim(best_manifold) > 0 && !params.dim_adjustment
                 R = fit(PCA, X[:, labels(best_manifold)];
@@ -77,12 +79,13 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters)
                         pratio = params.dim_adjustment_ratio > 0.0 ? params.dim_adjustment_ratio : 0.99)
             end
             pr = @sprintf("%.5f", principalratio(R))
-            LOG(params, 2, "aligning manifold basis: $pr")
+            LOG(params, 3, "aligning manifold basis: $pr")
             best_manifold = Manifold(outdim(R), mean(R), projection(R),
                                     labels(best_manifold), separation(best_manifold))
         end
 
-        LOG(params, 1, @sprintf("found cluster # %d, size=%d, dim=%d",
+        # Add a new manifold cluster to collection
+        LOG(params, 2, @sprintf("found cluster # %d, size=%d, dim=%d",
                 cluster_number, length(labels(best_manifold)), indim(best_manifold)))
         push!(manifolds, best_manifold)
 
@@ -94,103 +97,115 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters)
         # Look at the rest of the dataset
         index = remains
     end
-    manifolds
+
+    # Rest of the points considered as noise
+    if length(index) > 0
+        LOG(params, 3, "outliers: $(length(index))")
+        push!(manifolds, Manifold(0, zeros(d), eye(d,d), index, Separation()))
+    end
+
+    return manifolds
 end
 
 # Find manifold in multiple dimensions
 function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, params::LMCLUSParameters)
-    noise = false
     filtered = Int[]
     selected = Array(Int, length(index))
     copy!(selected, index)
-    best_sep = Separation()
-    best_dim = 0  # dimension in which separation was found
-    best_origin = Float64[]
-    best_basis = zeros(0, 0)
-    mdl = Inf
-    mdl_m = Manifold()
-    mdl_filtered = Int[]
-    mdl_noise = false
 
-    for sep_dim = params.min_dim:params.max_dim
+    best_manifold = Manifold()
+
+    mdl = Inf
+    mdl_manifold = Manifold()
+    mdl_filtered = Int[]
+
+    for sep_dim in params.min_dim:params.max_dim
+        noise = false
 
         while true
-            origin, basis, separation = find_best_separation(X[:, selected], sep_dim, params)
-            LOG(params, 2, "BEST_BOUND: ", criteria(separation), " (", params.best_bound, ")")
-            if criteria(separation) < params.best_bound
+            origin, basis, sep = find_best_separation(X[:, selected], sep_dim, params)
+            LOG(params, 4, "best bound: ", criteria(sep), " (", params.best_bound, ")")
+
+            # No good separation found
+            if criteria(sep) < params.best_bound
                 if sep_dim == params.max_dim
-                    LOG(params, 2, "no separation")
+                    LOG(params, 3, "no separation, forming cluster...")
                 else
-                    LOG(params, 2, "no separation, increasing dimension ...")
+                    LOG(params, 3, "no separation, increasing dimension...")
                 end
                 break
             end
 
-            # new separation found
-            best_sep = separation
-            best_dim = sep_dim
-            best_origin = origin
-            best_basis = basis
-            best_points = Int[]
-
             # filter separated points
+            manifold_points = Int[]
+            removed_points  = Int[]
             for i=1:length(selected)
                 idx = selected[i]
                 # point i has distances less than the threshold value
-                d = distance_to_manifold(X[:, idx], best_origin, best_basis)
-                if d < best_sep.threshold
-                    push!(best_points, idx)
+                d = distance_to_manifold(X[:, idx], origin, basis)
+                if d < threshold(sep)
+                    push!(manifold_points, idx)
                 else
-                    push!(filtered, idx)
+                    push!(removed_points, idx)
                 end
             end
-            selected = best_points
 
-            # small amount of points is considered noise
-            if length(selected) < params.noise_size
+            # small amount of points is considered noise, try to bump dimension
+            if length(manifold_points) <= params.noise_size
                 noise = true
-                LOG(params, 2, "noise less than ", params.noise_size," points")
+                LOG(params, 3, "noise: cluster size < ", params.noise_size," points")
                 break
-            else
-                LOG(params, 2, "Separated points: ", length(selected))
             end
+
+            # Create manifold cluster from good separation found
+            best_manifold = Manifold(sep_dim, origin, basis, manifold_points, sep)
+            selected = manifold_points
+            append!(filtered, removed_points)
+            LOG(params, 3, "separated points: ", length(manifold_points))
         end
 
-        if noise # no more points left - finish clustering
+        if length(selected) <= params.noise_size # no more points left - finish clustering
+            LOG(params, 3, "noise: dataset size < ", params.noise_size," points")
             break
         end
 
-        if params.mdl_heuristic
-            m = Manifold(best_dim, best_origin, best_basis, selected, best_sep)
-            l = MDLength(m, X[:, selected];
+        if params.mdl_heuristic && !noise
+            l = MDLength(best_manifold, X[:, selected];
                          P = params.mdl_coding_value, T = :Empirical,
                          bins = params.noise_size)
-            if l <= mdl
-                LOG(params, 2, "MDL improved: $(l) <= $(mdl) (C: $(length(selected)), D: $(best_dim))")
+            if l < mdl
+                LOG(params, 4, "MDL improved: $(l) < $(mdl) (C: $(length(selected)), D: $(indim(best_manifold)))")
                 mdl = l
-                mdl_m = m
+                mdl_manifold = copy(best_manifold)
                 mdl_filtered = copy(filtered)
-                mdl_noise = noise
             end
         end
     end
 
-    # Check final best manifold against MDL
-    best_m = Manifold(best_dim, best_origin, best_basis, selected, best_sep)
+    # Cannot find any manifold in data then form 0D cluster
+    if indim(best_manifold) == 0
+        n = size(X, 1)
+        best_manifold = Manifold(0, zeros(n), eye(n,n), selected, Separation())
+        LOG(params, 3, "no linear manifolds found in data, 0D cluster formed")
+    end
+
+    # Check final best manifold MDL score
+    #tmp_manifold = Manifold(best_dim, best_origin, best_basis, selected, best_sep)
     if params.mdl_heuristic
-        l = MDLength(best_m, X[:, selected];
+        l = MDLength(best_manifold, X[:, selected];
                      P = params.mdl_coding_value, T = :Empirical,
                      bins = params.noise_size)
         if l > mdl
-            best_m = mdl_m
+            best_manifold = mdl_manifold
             filtered = mdl_filtered
-            noise = mdl_noise
-            LOG(params, 2, "MDL degraded: $(l) > $(mdl) (Rollback to C: $(length(labels(best_m))), D: $(indim(best_m)), F: $(length(filtered)))")
+            LOG(params, 4, "MDL degraded: $(l) > $(mdl) (Rollback to C: $(length(labels(best_manifold))), D: $(indim(best_manifold)), F: $(length(filtered)))")
         end
     end
 
-    best_m, filtered, noise
+    best_manifold, filtered
 end
+
+#function best_manifold
 
 best_separation(t1, t2) = criteria(t1[1]) > criteria(t2[1]) ? t1 : t2
 
@@ -202,10 +217,10 @@ best_separation(t1, t2) = criteria(t1[1]) > criteria(t2[1]) ? t1 : t2
 function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int, params::LMCLUSParameters)
     full_space_dim, data_size = size(X)
 
-    LOG(params, 2, "---------------------------------------------------------------------------------")
-    LOG(params, 2, "data size=", data_size,"   linear manifold dim=",
-            lm_dim,"   space dim=", full_space_dim,"   searching for separation ...")
-    LOG(params, 2, "---------------------------------------------------------------------------------")
+    LOG(params, 3, "---------------------------------------------------------------------------------")
+    LOG(params, 3, "data size=", data_size,"   linear manifold dim=",
+            lm_dim,"   space dim=", full_space_dim,"   searching for separation")
+    LOG(params, 3, "---------------------------------------------------------------------------------")
 
     # determine number of samples of lm_dim+1 points
     Q = sample_quantity( lm_dim, full_space_dim, data_size, params)
@@ -214,7 +229,7 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int, param
     best_sep = Separation()
     best_origin = Float64[]
     best_basis = zeros(0, 0)
-    LOG(params, 3, "Start sampling: ", Q)
+    LOG(params, 5, "Start sampling: ", Q)
 
     if nprocs() > 1
         # Parallel implementation
@@ -243,14 +258,14 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int, param
             origin, basis = form_basis(X[:, sample])
             try
                 sep = find_separation(X, origin, basis, params)
-                LOG(params, 3, "SEP: ", criteria(sep), ", BSEP:", criteria(best_sep))
+                LOG(params, 5, "SEP: ", criteria(sep), ", BSEP:", criteria(best_sep))
                 if criteria(sep) > criteria(best_sep)
                     best_sep = sep
                     best_origin = origin
                     best_basis = basis
                 end
             catch e
-                LOG(params, 4, e.msg)
+                LOG(params, 5, e.msg)
                 continue
             end
         end
@@ -258,9 +273,9 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int, param
 
     cr = criteria(best_sep)
     if cr <= 0.
-        LOG(params, 2, "no good histograms to separate data !!!")
+        LOG(params, 4, "no good histograms to separate data !!!")
     else
-        LOG(params, 2, "Separation: width=", best_sep.discriminability,
+        LOG(params, 4, "Separation: width=", best_sep.discriminability,
         "  depth=", best_sep.depth, "  criteria=", cr)
     end
     return best_origin, best_basis, best_sep
@@ -309,7 +324,7 @@ function sample_quantity(lm_dim::Int, full_space_dim::Int, data_size::Int, param
     N = abs(log10(params.error_bound)/log10(1-P))
     num_samples = 0
 
-    LOG(params, 2, "number of samples by first heuristic=", N, ", by second heuristic=", data_size*params.sampling_factor)
+    LOG(params, 4, "number of samples by first heuristic=", N, ", by second heuristic=", data_size*params.sampling_factor)
 
     if params.heuristic == 1
         num_samples = int(N)
@@ -324,7 +339,7 @@ function sample_quantity(lm_dim::Int, full_space_dim::Int, data_size::Int, param
     end
     num_samples = num_samples > 1 ? num_samples : 1
 
-    LOG(params, 2, "number of samples=", num_samples)
+    LOG(params, 3, "number of samples=", num_samples)
 
     num_samples
 end

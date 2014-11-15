@@ -39,7 +39,7 @@ module TestLMCLUS
 	# Test clustering
 	p = LMCLUSParameters(5)
 	p.basis_alignment = true
-	p.log_level = 1
+	p.log_level = 2
 	p.dim_adjustment = true
 	p.dim_adjustment_ratio = 0.95
 	p.random_seed = 4572489057
