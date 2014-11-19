@@ -100,7 +100,7 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters)
 
     # Rest of the points considered as noise
     if length(index) > 0
-        LOG(params, 3, "outliers: $(length(index))")
+        LOG(params, 2, "outliers: $(length(index)), 0D cluster formed")
         push!(manifolds, Manifold(0, zeros(d), eye(d,d), index, Separation()))
     end
 
@@ -229,7 +229,7 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int, param
     best_sep = Separation()
     best_origin = Float64[]
     best_basis = zeros(0, 0)
-    LOG(params, 5, "Start sampling: ", Q)
+    LOG(params, 5, "start sampling: ", Q)
 
     if nprocs() > 1
         # Parallel implementation
@@ -275,7 +275,7 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int, param
     if cr <= 0.
         LOG(params, 4, "no good histograms to separate data !!!")
     else
-        LOG(params, 4, "Separation: width=", best_sep.discriminability,
+        LOG(params, 4, "separation: width=", best_sep.discriminability,
         "  depth=", best_sep.depth, "  criteria=", cr)
     end
     return best_origin, best_basis, best_sep
