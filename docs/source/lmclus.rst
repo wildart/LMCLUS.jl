@@ -8,11 +8,12 @@ LMCLUS is a linear manifold clustering algorithm which models cluster as follows
     x = \mu^{N \times 1} + B^{N \times K} \phi^{K \times 1} +
         \bar{B}^{N \times N-K} \epsilon^{N-K \times 1}
 
-:math:`\mu \in \mathbb{R}^N` is a linear manifold translation vector
-:math:`B` is a matrix whose columns are orthonormal vectors that span :math:`\mathbb{R}^K`
-:math:`\bar{B}` is a matrix whose columns span subspace orthogonal to spanned by columns of :math:`B`
-:math:`\phi` is a 0-mean random vector whose entries are i.i.d. from a support of linear manifold
-:math:`\epsilon` is a zero mean random vector with small variance independent of :math:`\phi`
+where :math:`N` is a dimension of the dataset, :math:`K` is dimension of the manifold,
+:math:`\mu \in \mathbb{R}^N` is a linear manifold translation vector,
+:math:`B` is a matrix whose columns are orthonormal vectors that span :math:`\mathbb{R}^K`,
+:math:`\bar{B}` is a matrix whose columns span subspace orthogonal to spanned by columns of :math:`B`,
+:math:`\phi` is a 0-mean random vector whose entries are i.i.d. from a support of linear manifold,
+:math:`\epsilon` is a zero mean random vector with small variance independent of :math:`\phi`.
 
 Clustering
 ----------
