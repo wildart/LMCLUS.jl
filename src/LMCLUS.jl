@@ -55,6 +55,12 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters)
     cluster_number = 0
     manifolds = Manifold[]
 
+    # Check if manifold maximum dimension is less then full dimension
+    if d <= params.max_dim
+        params.max_dim = d - 1
+        LOG(params, 1, "Adjusting maximum manifold dimension to $(params.max_dim)")
+    end
+
     # Main loop through dataset
     while length(index) > params.noise_size
         # Find one manifold
