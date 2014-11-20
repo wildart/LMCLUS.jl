@@ -1,2 +1,2 @@
-LMCLUS Parameters
-=================
+Parameters
+==========

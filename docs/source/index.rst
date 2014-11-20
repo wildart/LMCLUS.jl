@@ -13,7 +13,7 @@ Linear manifold clustering (LMCLUS) identifies subsets of the data which are emb
 **Contents:**
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    lmclus.rst
    params.rst
