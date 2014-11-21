@@ -1,7 +1,7 @@
 Linear Manifold CLUStering
 ==========================
 
-LMCLUS is a linear manifold clustering algorithm which models cluster as follows:
+LMCLUS is a linear manifold clustering algorithm which defines cluster through the following model:
 
 .. math::
 
@@ -33,10 +33,10 @@ This package implements the *LMCLUS* algorithm in the ``lmclus`` function:
 
         type Manifold
             d::Int                     # Dimension of the manifold
-            μ::Vector{Float64}         # Translation vector
+            mu::Vector{Float64}        # Translation vector
             proj::Matrix{Float64}      # Matrix of basis vectors that span manifold
             points::Vector{Int}        # Indexes of points associated with this cluster
-            separation::Separation     # Separation paramaters
+            separation::Separation     # Separation parameters
         end
 
 Results
@@ -54,11 +54,11 @@ Let ``M`` be an instance of ``Manifold``, ``n`` be the number of observations, a
 
 .. function:: mean(M)
 
-    Get the number of points in the cluster ``n``, *i.e* the size of the cluster.
+    Get the translation vector :math:`\mu`, *i.e* the coordinates of the linear subspace origin.
 
 .. function:: projection(M)
 
-    Get the number of points in the cluster ``n``, *i.e* the size of the cluster.
+    Get the matrix with columns corresponding to orthonormal vectors that span the linear manifold.
 
 .. function:: separation(M)
 
@@ -71,14 +71,13 @@ Example
 
     using LMCLUS
 
-    # make a random dataset with 1000 points
-    # each point is a 5-dimensional vector
-    X = rand(5, 1000)
+    # Load test data, remove label column and flip
+    X = readdlm(Pkg.dir("LMCLUS", "test", "testData"), ',')[:,1:end-1]'
 
     # Initialize clustering parameters with
-    # maximum dimensionality of clusers
-    # less then original space dimension
-    params = LMCLUSParamaters(4)
+    # maximum dimensionality for clusters.
+    # I should be less then original space dimension.
+    params = LMCLUSParamaters(5)
 
     # perform clustering
     Ms = lmclus(X, params)
@@ -90,7 +89,7 @@ Example
     l = labels(M)
 
     # obtain the linear manifold cluster translation vector
-    μ = mean(R)
+    mu = mean(M)
 
     # get basis vectors that span manifold as columns of matrix
     B = projection(M)
