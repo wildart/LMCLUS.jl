@@ -2,8 +2,6 @@ module TestLMCLUS
 	using LMCLUS
 	using Base.Test
 
-	@test_approx_eq LMCLUS.sumsq([1., 2.]) 5.0
-
 	# Initialize parameters
 	p = LMCLUSParameters(3)
 
