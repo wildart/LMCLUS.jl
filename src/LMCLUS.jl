@@ -128,6 +128,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
 
     for sep_dim in params.min_dim:params.max_dim
         noise = false
+        separations = 0
 
         while true
             origin, basis, sep = find_best_separation(X[:, selected], sep_dim, params)
@@ -169,6 +170,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
             selected = manifold_points
             append!(filtered, removed_points)
             LOG(params, 3, "separated points: ", length(manifold_points))
+            separations += 1
         end
 
         if length(selected) <= params.noise_size # no more points left - finish clustering
@@ -176,15 +178,17 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
             break
         end
 
-        if params.mdl_heuristic && !noise && indim(best_manifold) > 0
+        if params.mdl_heuristic && !noise && indim(best_manifold) > 0 && separations > 0
             l = MDLength(best_manifold, X[:, selected];
                          P = params.mdl_coding_value, T = :Empirical,
                          bins = params.noise_size)
             if l < mdl
-                LOG(params, 4, "MDL improved: $(l) < $(mdl) (C: $(length(selected)), D: $(indim(best_manifold)))")
+                LOG(params, 4, "MDL improved: $(l) < $(mdl) (C: $(outdim(mdl_manifold)), D: $(indim(mdl_manifold)))")
                 mdl = l
                 mdl_manifold = copy(best_manifold)
                 mdl_filtered = copy(filtered)
+            else
+                LOG(params, 4, "MDL is not improved: $(l) >= $(mdl) (C: $(outdim(mdl_manifold)), D: $(indim(mdl_manifold)))")
             end
         end
     end
@@ -205,7 +209,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
         if l > mdl
             best_manifold = mdl_manifold
             filtered = mdl_filtered
-            LOG(params, 4, "MDL degraded: $(l) > $(mdl) (Rollback to C: $(length(labels(best_manifold))), D: $(indim(best_manifold)), F: $(length(filtered)))")
+            LOG(params, 4, "MDL degraded: $(l) > $(mdl) (Rollback to C: $(outdim(best_manifold)), D: $(indim(best_manifold)), F: $(length(filtered)))")
         end
     end
 
