@@ -46,10 +46,23 @@ module TestMDL
 
     srand(923487298)
     Xg, Mg = generate_lm(N, M, C, B, bounds, θ, :Gausian; σs = σs)
-    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = 32., T=:Uniform)   3296 1
-    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = 32., T=:Gausian)   9632 1
-    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = 32., T=:Empirical) 4124 1
+    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:Uniform)   3340 1
+    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:Gaussian)  3437 1
+    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:Empirical) 3395 1
     Mg.d = 0
-    @test_approx_eq     LMCLUS.MDLength(Mg, Xg, P = 32., T=:None)      6400
-    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = 32., T=:Center)    169  1
+    @test_approx_eq     LMCLUS.MDLength(Mg, Xg, P = P, dist=:None)      6432
+    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:Center)    169  1
+
+    # Quantization
+    @test_approx_eq LMCLUS.univar([1.]) [1./12.]
+    @test_approx_eq LMCLUS.opt_bins([1.], 1.) 1.
+    bins, ɛ, c, itr = LMCLUS.opt_quant([1.], 1e-2)
+    @test bins[1] == 3
+    @test ɛ < 1e-2
 end
+
+# draw(PNG("mdl.png", 9inch, 9inch/golden),
+# plot(x=vec(Xtr[1,:]), y=vec(Xtr[2,:]), Geom.point,
+#     Theme(default_point_size=0.8mm, panel_fill=color("white")))
+# )
+# )

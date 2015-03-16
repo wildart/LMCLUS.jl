@@ -178,10 +178,10 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
             break
         end
 
-        if params.mdl_heuristic && !noise && indim(best_manifold) > 0 && separations > 0
+        if params.mdl && !noise && indim(best_manifold) > 0 && separations > 0
             l = MDLength(best_manifold, X[:, selected];
-                         P = params.mdl_coding_value, T = :Empirical,
-                         bins = params.noise_size)
+                        P = params.mdl_coding_value, dist = :Empirical,
+                        ɛ = params.mdl_quant_error)
             if l < mdl
                 LOG(params, 4, "MDL improved: $(l) < $(mdl) (C: $(outdim(mdl_manifold)), D: $(indim(mdl_manifold)))")
                 mdl = l
@@ -202,10 +202,10 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
 
     # Check final best manifold MDL score
     #tmp_manifold = Manifold(best_dim, best_origin, best_basis, selected, best_sep)
-    if params.mdl_heuristic
+    if params.mdl
         l = MDLength(best_manifold, X[:, selected];
-                     P = params.mdl_coding_value, T = :Empirical,
-                     bins = params.noise_size)
+                    P = params.mdl_coding_value, dist = :Empirical,
+                    ɛ = params.mdl_quant_error)
         if l > mdl
             best_manifold = mdl_manifold
             filtered = mdl_filtered

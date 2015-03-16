@@ -41,6 +41,7 @@ module TestLMCLUS
 	p.dim_adjustment = true
 	p.dim_adjustment_ratio = 0.95
 	p.random_seed = 4572489057
+	p.mdl = true
 	ds = readdlm(Pkg.dir("LMCLUS", "test", "testData"), ',')
 	manifolds = lmclus(ds[:,1:end-1]',p)
 	@test length(manifolds) >= 3
