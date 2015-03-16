@@ -11,7 +11,7 @@ Linear Manifold Clustering Algorithm relies on multiple search and optimization 
 
     A gray-level thresholding method for multimodal histograms.
 
-.. function:: MDLength(M, X; P, T, bins)
+.. function:: MDLength(M, X; P = 16, T = :Gausian, ɛ = 1e-4)
 
     Performs calculation of linear manifold cluster minimum description length.
 
@@ -23,6 +23,6 @@ Linear Manifold Clustering Algorithm relies on multiple search and optimization 
                 to ``Float32``.
     :param T:   Type of a dataset encoding model as ``Symbol``:
                 ``:Gausian``, ``:Uniform ``, ``:Empirical``.
-    :param bins: Number of histogram bins required for empirical model encoding
+    :param ɛ:   Error tolerance for bin quantization used in an empirical model encoding
 
     Returns number of bits required to encode linear manifold cluster with the MDL schema.
