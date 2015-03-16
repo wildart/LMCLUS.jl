@@ -12,7 +12,7 @@ Pkg.clone("https://github.com/wildart/LMCLUS.jl.git")
 ```
 
 ## TODO
-    * Zero-dimensional manifold search
+- Zero-dimensional manifold search
 
 ## Resources
 - **Documentation:** <http://lmclusjl.readthedocs.org/en/latest/index.html>
