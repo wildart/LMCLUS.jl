@@ -180,7 +180,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
 
         if params.mdl && !noise && indim(best_manifold) > 0 && separations > 0
             l = MDLength(best_manifold, X[:, selected];
-                        P = params.mdl_coding_value, dist = :Empirical,
+                        P = params.mdl_precision, dist = :Empirical,
                         ɛ = params.mdl_quant_error)
             if l < mdl
                 LOG(params, 4, "MDL improved: $(l) < $(mdl) (C: $(outdim(mdl_manifold)), D: $(indim(mdl_manifold)))")
@@ -204,7 +204,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
     #tmp_manifold = Manifold(best_dim, best_origin, best_basis, selected, best_sep)
     if params.mdl
         l = MDLength(best_manifold, X[:, selected];
-                    P = params.mdl_coding_value, dist = :Empirical,
+                    P = params.mdl_precision, dist = :Empirical,
                     ɛ = params.mdl_quant_error)
         if l > mdl
             best_manifold = mdl_manifold
@@ -328,7 +328,7 @@ end
 function sample_quantity(lm_dim::Int, full_space_dim::Int, data_size::Int, params::LMCLUSParameters)
 
     k = params.cluster_number
-    if k == 1
+    if k <= 1
         return 1 # case where there is only one cluster
     end
 
@@ -344,10 +344,9 @@ function sample_quantity(lm_dim::Int, full_space_dim::Int, data_size::Int, param
     elseif params.sampling_heuristic == 2
         num_samples = int(data_size*params.sampling_factor)
     elseif params.sampling_heuristic == 3
-        if N < (data_size*params.sampling_factor)
+        num_samples = int(data_size*params.sampling_factor)
+        if N < num_samples
             num_samples = int(N)
-        else
-            num_samples = int(data_size*params.sampling_factor)
         end
     end
     num_samples = num_samples > 1 ? num_samples : 1

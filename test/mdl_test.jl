@@ -48,7 +48,8 @@ module TestMDL
     Xg, Mg = generate_lm(N, M, C, B, bounds, θ, :Gausian; σs = σs)
     @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:Uniform)   3340 1
     @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:Gaussian)  3437 1
-    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:Empirical) 3395 1
+    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:Empirical, ɛ = 1e-3) 3395 1 # quantization
+    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:Empirical, ɛ = 20.0) 3716 1 # bin # fixed
     Mg.d = 0
     @test_approx_eq     LMCLUS.MDLength(Mg, Xg, P = P, dist=:None)      6432
     @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:Center)    169  1

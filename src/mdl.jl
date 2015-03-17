@@ -66,7 +66,11 @@ function entropy_dl{T<:FloatingPoint}(M::Manifold, X::Matrix{T}, dist::Symbol, �
         Ymin = minimum(Y, 2)
         Ymax = maximum(Y, 2)
         intervals = 2*max(abs(Ymin), abs(Ymax))[:]
-        bins, _ = opt_quant(intervals[ri], ɛ)
+        if ɛ < 1.
+            bins, _ = opt_quant(intervals[ri], ɛ)
+        else
+            bins = fill(int(ɛ), length(r))
+        end
         for i in ri
             Yb = linspace(Ymin[i], Ymax[i], bins[i]+1)
             h = hist(vec(Y[i,:]),Yb)[2]
