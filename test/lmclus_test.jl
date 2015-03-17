@@ -9,11 +9,11 @@ module TestLMCLUS
 	p.cluster_number = 1
 	@test LMCLUS.sample_quantity(1,3,1000,p) == 1
 	p.cluster_number = 2
-	p.heuristic = 1
+	p.sampling_heuristic = 1
 	@test LMCLUS.sample_quantity(1,3,1000,p) == 13
-	p.heuristic = 2
+	p.sampling_heuristic = 2
 	@test LMCLUS.sample_quantity(1,3,1000,p) == 10
-	p.heuristic = 3
+	p.sampling_heuristic = 3
 	@test LMCLUS.sample_quantity(1,3,1000,p) == 10
 
 	# Test data sampling

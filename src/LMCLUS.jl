@@ -339,11 +339,11 @@ function sample_quantity(lm_dim::Int, full_space_dim::Int, data_size::Int, param
 
     LOG(params, 4, "number of samples by first heuristic=", N, ", by second heuristic=", data_size*params.sampling_factor)
 
-    if params.heuristic == 1
+    if params.sampling_heuristic == 1
         num_samples = int(N)
-    elseif params.heuristic == 2
+    elseif params.sampling_heuristic == 2
         num_samples = int(data_size*params.sampling_factor)
-    elseif params.heuristic == 3
+    elseif params.sampling_heuristic == 3
         if N < (data_size*params.sampling_factor)
             num_samples = int(N)
         else

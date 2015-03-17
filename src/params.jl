@@ -10,7 +10,7 @@ type LMCLUSParameters
     error_bound::Float64
     max_bin_portion::Float64
     random_seed::Int64
-    heuristic::Int
+    sampling_heuristic::Int
     sampling_factor::Float64
     histogram_sampling::Bool
     zero_d_search::Bool
@@ -37,7 +37,7 @@ show(io::IO, p::LMCLUSParameters) =
     Sample points for distance histogram (histogram_sampling): $(p.histogram_sampling)
     Histogram bins (hist_bin_size): $(p.hist_bin_size)
     Maximum histogram bin size (max_bin_portion): $(p.max_bin_portion)
-    Sampling heuristic (heuristic): $(p.heuristic)
+    Sampling heuristic (sampling_heuristic): $(p.sampling_heuristic)
     Sampling factor (sampling_factor): $(p.sampling_factor)
     Random seed (random_seed): $(p.random_seed) (0 - random seed)
     0D manifold search (zero_d_search): $(p.zero_d_search)
