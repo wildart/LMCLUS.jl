@@ -276,7 +276,7 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int, param
                     best_basis = basis
                 end
             catch e
-                LOG(params, 5, e.msg)
+                LOG(params, 5, e)
                 continue
             end
         end
@@ -307,13 +307,15 @@ function find_separation{T<:FloatingPoint}(X::Matrix{T}, origin::Vector{T},
         n2=(Z_01*Z_01)/(delta_mu*delta_mu*p)
         n3= ( n1 >= n2 ? n1 : n2 )
         n4= int(n3)
-        n= ( size(X, 1) <= n4 ? size(X, 1)-1 : n4 )
+        n= ( size(X, 2) <= n4 ? size(X, 2)-1 : n4 )
 
+        LOG(params, 4, "find_separation: try to find $n samples")
         sampleIndex = sample_points(X, n)
-        X = X[:, sampleIndex]
+    else
+        sampleIndex = 1:size(X,2)
     end
 
-    distances = distance_to_manifold(X, origin, basis)
+    distances = distance_to_manifold(X[:,sampleIndex] , origin, basis)
     # Define histogram size
     bins = hist_bin_size(distances, params)
     return kittler(distances, bins=bins)

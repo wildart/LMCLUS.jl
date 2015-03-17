@@ -34,6 +34,14 @@ module TestLMCLUS
 	point = vec([1.0,1.0,1.0])
 	@test_approx_eq distance_to_manifold(point, basis) 1.0
 
+	# Test parameters
+	l = 1000
+	x = rand(l)
+	p = LMCLUSParameters(5)
+	@test LMCLUS.hist_bin_size(x, p) == int(l*p.max_bin_portion)
+	p.hist_bin_size = 20
+	@test LMCLUS.hist_bin_size(x, p) == p.hist_bin_size
+
 	# Test clustering
 	p = LMCLUSParameters(5)
 	p.basis_alignment = true
@@ -41,7 +49,6 @@ module TestLMCLUS
 	p.dim_adjustment = true
 	p.dim_adjustment_ratio = 0.95
 	p.random_seed = 4572489057
-	p.mdl = true
 	ds = readdlm(Pkg.dir("LMCLUS", "test", "testData"), ',')
 	manifolds = lmclus(ds[:,1:end-1]',p)
 	@test length(manifolds) >= 3
@@ -53,4 +60,22 @@ module TestLMCLUS
 				length(manifolds[i].points) + length(manifolds[j].points)
 	end
 	println()
+
+	# Sampling
+	p.histogram_sampling = true
+	p.cluster_number = 3
+	manifolds = lmclus(ds[:,1:end-1]',p)
+	@test length(manifolds) >= 3
+	p.histogram_sampling = false
+
+	# MDL
+	p.mdl = true
+	manifolds = lmclus(ds[:,1:end-1]',p)
+	@test length(manifolds) >= 3
+	p.mdl = false
+
+	# RNG seed
+	p.random_seed = 0
+	manifolds = lmclus(ds[:,1:end-1]',p)
+	@test length(manifolds) >= 3
 end
