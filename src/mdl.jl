@@ -2,7 +2,8 @@
 univar{T<:FloatingPoint}(interval::Vector{T}) = (1//12)*(interval).^2
 
 # Optimal number of bins given constant C over interval
-opt_bins{T<:FloatingPoint}(interval::Vector{T}, C::T) = int( interval * exp( (C - sum(interval))/length(interval) ) )
+opt_bins{T<:FloatingPoint}(interval::Vector{T}, C::T) =
+    int( ceil(interval * exp( (C - sum(interval))/length(interval) ), 0 ) )
 
 # Optimal quantization of the interval
 function opt_quant{T<:FloatingPoint}(interval::Vector{T}, ɛ::T; tot::Int = 1000, α::T = 0.5)
