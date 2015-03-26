@@ -18,7 +18,7 @@ end
 # Sample randomly lm_dim+1 points from the dataset, making sure
 # that the same point is not sampled twice. the function will return
 # a index vector, specifying the index of the sampled points.
-function sample_points(X::Matrix{Float64}, n::Int)
+function sample_points{T<:FloatingPoint}(X::Matrix{T}, n::Int)
     if n <= 0
         error("Sample size must be positive")
     end
@@ -103,7 +103,7 @@ function sample_points2(X::Matrix{Float64}, n::Int, trycount::Int = 10)
 end
 
 # Bootstrap histogram
-function histbst{T}(x::Vector{T}; bins::Int = 10)
+function histbst{T<:FloatingPoint}(x::Vector{T}; bins::Int = 10)
     x = sort(x)
     counts = Int[]
 
