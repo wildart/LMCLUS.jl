@@ -2,20 +2,23 @@
 univar{T<:FloatingPoint}(interval::Vector{T}) = (1//12)*(interval).^2
 
 # Optimal number of bins given constant C over interval
-opt_bins{T<:FloatingPoint}(interval::Vector{T}, C::T) =
-    int( ceil(interval * exp( (C - sum(interval))/length(interval) ), 0 ) )
+opt_bins{T<:FloatingPoint}(intervals::Vector{T}, C::T) =
+    int( ceil(intervals * exp( (C - sum(intervals))/length(intervals) ), 0 ) )
+
+# Quantizing error
+quant_error(intervals, N_k_opt) = sum(univar(intervals./N_k_opt))
 
 # Optimal quantization of the interval
-function opt_quant{T<:FloatingPoint}(interval::Vector{T}, ɛ::T; tot::Int = 1000, α::T = 0.5)
+function opt_quant{T<:FloatingPoint}(intervals::Vector{T}, ɛ::T; tot::Int = 1000, α::T = 0.5)
     C = 1.0
     i = 1
-    N_k_opt = opt_bins(interval, C)
-    err_opt = sum(univar(interval./N_k_opt))
+    N_k_opt = ones(length(intervals))
+    err_opt = Inf
     while err_opt > ɛ && i < tot
         C += α
         i += 1
-        N_k_opt = opt_bins(interval, C)
-        err_opt = sum(univar(interval./N_k_opt))
+        N_k_opt = opt_bins(intervals, C)
+        err_opt = quant_error(intervals, N_k_opt)
     end
     return N_k_opt, err_opt, C, i
 end
@@ -34,7 +37,7 @@ end
 function data_dl{T<:FloatingPoint}(M::Manifold, X::Matrix{T}, P::Int, dist::Symbol, ɛ::T)
     D = 0.0
     if dist == :None
-        D = P*(length(X)-1)
+        D = P*length(X)
     elseif dist == :Center
         D = entropy_dl(M, X, dist, ɛ)
     else
@@ -47,26 +50,25 @@ end
 function entropy_dl{T<:FloatingPoint}(M::Manifold, X::Matrix{T}, dist::Symbol, ɛ::T)
     n = size(X,1) # space dimension
     m = indim(M)  # manifold dimension
+    Xtr = X .- mean(M)
 
     E = 0.0
     if dist == :Uniform && m > 0
         E = -float(n)*log(separation(M).threshold)
     elseif dist == :Gaussian && m > 0
         B = projection(M)
-        Xtr = X .- mean(M)
         OP = (eye(n) - B*B')*Xtr # points projected to orthoganal complement subspace
         Σ = OP*OP'
         E += mvd_entropy(m, det(Σ))
     elseif dist == :Empirical # for 0D manifold only empirical estimate is avalible
-        Xtr = X .- mean(M)
         F = svdfact(Xtr)
         r = (m+1):n
         ri = 1:length(r)
         BC = F[:U][:,r]
         Y = BC*BC'*Xtr
-        Ymin = minimum(Y, 2)
-        Ymax = maximum(Y, 2)
-        intervals = 2*max(abs(Ymin), abs(Ymax))[:]
+        Ymin = vec(minimum(Y, 2))
+        Ymax = vec(maximum(Y, 2))
+        intervals = abs(Ymax - Ymin) #2*max(abs(Ymin), abs(Ymax))
         if ɛ < 1.
             bins, _ = opt_quant(intervals[ri], ɛ)
         else
@@ -78,8 +80,18 @@ function entropy_dl{T<:FloatingPoint}(M::Manifold, X::Matrix{T}, dist::Symbol, �
             h /= sum(h)
             E += -sum(map(x-> x == 0. ? 0. : x*log2(x), h))
         end
+    elseif dist == :OptimalQuant
+        F = svdfact(Xtr)
+        r = (m+1):n
+        ri = 1:length(r)
+        BC = F[:U][:,r]
+        Y = BC*BC'*Xtr
+        Ymin = vec(minimum(Y, 2))
+        Ymax = vec(maximum(Y, 2))
+        intervals = abs(Ymax - Ymin)
+        bins, sqerr, C = opt_quant(intervals[ri], ɛ)
+        E = C/log(2)
     elseif dist == :Center
-        Xtr = X .- mean(M)
         for i in 1:outdim(M)
             for p in 1:n
                 E += log2(abs(Xtr[p,i]) + 1)

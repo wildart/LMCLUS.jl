@@ -180,15 +180,21 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
 
         if params.mdl && !noise && indim(best_manifold) > 0 && separations > 0
             l = MDLength(best_manifold, X[:, selected];
-                        P = params.mdl_precision, dist = :Empirical,
+                        P = params.mdl_precision, dist = :OptimalQuant, #Empirical
                         ɛ = params.mdl_quant_error)
-            if l < mdl
-                LOG(params, 4, "MDL improved: $(l) < $(mdl) (C: $(outdim(mdl_manifold)), D: $(indim(mdl_manifold)))")
-                mdl = l
-                mdl_manifold = copy(best_manifold)
-                mdl_filtered = copy(filtered)
+            cfl = params.mdl_precision*indim(best_manifold)*length(selected)
+            if cfl/l < params.mdl_compres_ratio
+                if l < mdl
+                    LOG(params, 4, "MDL improved: $l < $mdl (C: $(outdim(mdl_manifold)), D: $(indim(mdl_manifold)), R: $cfl)")
+                    mdl = l
+                    mdl_manifold = copy(best_manifold)
+                    mdl_filtered = copy(filtered)
+                else
+                    LOG(params, 4, "MDL is not improved: $(l) >= $(mdl) (C: $(outdim(mdl_manifold)), D: $(indim(mdl_manifold)))")
+                end
             else
-                LOG(params, 4, "MDL is not improved: $(l) >= $(mdl) (C: $(outdim(mdl_manifold)), D: $(indim(mdl_manifold)))")
+                mdl = cfl
+                LOG(params, 4, "MDL does not provide improvement over raw data encoding: $cfl/$l >= $(cfl/l)")
             end
         end
     end

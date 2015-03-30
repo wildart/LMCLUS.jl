@@ -20,10 +20,11 @@ type LMCLUSParameters
     mdl::Bool
     mdl_precision::Int
     mdl_quant_error::Float64
+    mdl_compres_ratio::Float64
     log_level::Int
 
     LMCLUSParameters(max_dim) =
-        new(1, max_dim, 10, 0, 20, 1., 1e-4, 0.1, 0, 3, 1e-2, false, false, false, false, 0.99, false, 16, 1e-4, 0)
+        new(1, max_dim, 10, 0, 20, 1., 1e-4, 0.1, 0, 3, 1e-2, false, false, false, false, 0.99, false, 16, 1e-4, 1., 0)
 end
 
 show(io::IO, p::LMCLUSParameters) =
@@ -46,7 +47,8 @@ show(io::IO, p::LMCLUSParameters) =
     Ratio of manifold principal subspace variance (dim_adjustment_ratio): $(p.dim_adjustment_ratio)
     Use MDL heuristic (mdl): $(p.mdl)
     MDL precision encoding (mdl_precision): $(p.mdl_precision)
-    MDL quantization error (mdl_quant_error): $(p.mdl_quant_error)
+    MDL quantizing error (mdl_quant_error): $(p.mdl_quant_error)
+    MDL compression ratio threshold (mdl_compres_ratio): $(p.mdl_compres_ratio)
     Log level (log_level): $(p.log_level)""")
 
 # Logger
