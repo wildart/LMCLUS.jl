@@ -1,6 +1,5 @@
 ﻿module LMCLUS
 
-using StatsBase
 using MultivariateStats
 
 export  lmclus,
