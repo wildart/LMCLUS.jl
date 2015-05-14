@@ -3,7 +3,7 @@
 using MultivariateStats
 
 export  lmclus,
-        LMCLUSParameters,
+        LMCLUSParameters, Diagnostic,
 
         kittler, otsu,
         distance_to_manifold,
@@ -128,9 +128,10 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
     for sep_dim in params.min_dim:params.max_dim
         noise = false
         separations = 0
+        ns = 0
 
         while true
-            origin, basis, sep = find_best_separation(X[:, selected], sep_dim, params)
+            origin, basis, sep, ns = find_best_separation(X[:, selected], sep_dim, params)
             LOG(params, 4, "best bound: ", criteria(sep), " (", params.best_bound, ")")
 
             # No good separation found
@@ -196,6 +197,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
                 LOG(params, 4, "MDL does not provide improvement over raw data encoding: $cfl/$l >= $(cfl/l)")
             end
         end
+        diagnostic(sep_dim, best_manifold, selected, params, mdl, ns, length(filtered))
     end
 
     # Cannot find any manifold in data then form 0D cluster
@@ -294,7 +296,7 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int, param
         LOG(params, 4, "separation: width=", best_sep.discriminability,
         "  depth=", best_sep.depth, "  criteria=", cr)
     end
-    return best_origin, best_basis, best_sep
+    return best_origin, best_basis, best_sep, Q
 end
 
 # Find separation criteria
