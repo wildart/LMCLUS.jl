@@ -23,8 +23,28 @@ type LMCLUSParameters
     mdl_compres_ratio::Float64
     log_level::Int
 
-    LMCLUSParameters(max_dim) =
-        new(1, max_dim, 10, 0, 20, 1., 1e-4, 0.1, 0, 3, 1e-2, false, false, false, false, 0.99, false, 16, 1e-4, 1., 0)
+    LMCLUSParameters(max_dim) = new(
+        1,        # min_dim
+        max_dim,  # max_dim
+        10,       # cluster_number
+        0,        # hist_bin_size
+        20,       # noise_size
+        1.0,      # best_bound
+        0.0001,   # error_bound
+        0.1,      # max_bin_portion
+        0,        # random_seed
+        3,        # sampling_heuristic
+        0.01,     # sampling_factor
+        false,    # histogram_sampling
+        false,    # zero_d_search
+        false,    # basis_alignment
+        false,    # dim_adjustment
+        0.99,     # dim_adjustment_ratio
+        false,    # mdl
+        16,       # mdl_precision
+        0.0001,   # mdl_quant_error
+        1.0,      # mdl_compres_ratio
+        0)        # log_level
 end
 
 show(io::IO, p::LMCLUSParameters) =
