@@ -4,6 +4,8 @@ type LMCLUSParameters
     min_dim::Int
     max_dim::Int
     cluster_number::Int
+    stop_after_cluster::Int
+    force_max_dim::Bool
     hist_bin_size::Int
     noise_size::Int
     best_bound::Float64
@@ -27,6 +29,8 @@ type LMCLUSParameters
         1,        # min_dim
         max_dim,  # max_dim
         10,       # cluster_number
+        1000,     # stop_after_cluster
+        true,     # force_max_dim
         0,        # hist_bin_size
         20,       # noise_size
         1.0,      # best_bound
@@ -51,7 +55,9 @@ show(io::IO, p::LMCLUSParameters) =
     print(io, """Linear Manifold Clustering parameters:
     Min dimension (min_dim): $(p.min_dim)
     Max dimension (max_dim): $(p.max_dim)
-    Number of clusters (cluster_number): $(p.cluster_number)
+    Approximate number of clusters (cluster_number): $(p.cluster_number)
+    Stop searching after number for clusters found (stop_after_cluster): $(p.stop_after_cluster)
+    Force algorithm to search in higher dimensions: $(p.force_max_dim)
     Noise size (noise_size): $(p.noise_size)
     Best bound (best_bound): $(p.best_bound)
     Error bound (error_bound): $(p.error_bound)

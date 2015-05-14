@@ -96,7 +96,7 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters)
         push!(manifolds, best_manifold)
 
         # Stop clustering if found specified number of clusters
-        if length(manifolds) == params.cluster_number
+        if length(manifolds) == params.stop_after_cluster
             break
         end
 
@@ -133,6 +133,8 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
         while true
             origin, basis, sep, ns = find_best_separation(X[:, selected], sep_dim, params)
             LOG(params, 4, "best bound: ", criteria(sep), " (", params.best_bound, ")")
+            LOG(params, 4, "threshold: ", threshold(sep))
+            LOG(params, 4, "# of samples: ", ns)
 
             # No good separation found
             if criteria(sep) < params.best_bound
@@ -197,7 +199,9 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
                 LOG(params, 4, "MDL does not provide improvement over raw data encoding: $cfl/$l >= $(cfl/l)")
             end
         end
-        diagnostic(sep_dim, best_manifold, selected, params, mdl, ns, length(filtered))
+
+        #diagnostic(sep_dim, best_manifold, selected, params, mdl, ns, length(filtered))
+        !params.force_max_dim && break
     end
 
     # Cannot find any manifold in data then form 0D cluster
