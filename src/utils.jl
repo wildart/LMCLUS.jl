@@ -166,3 +166,28 @@ function histbst{T<:FloatingPoint}(x::Vector{T}; bins::Int = 10)
 
     lppdf
 end
+
+type Diagnostic
+    manifold::Manifold
+    selected::Vector{Int}
+    params::LMCLUSParameters
+    mdl::Float64
+    removed::Int
+    samples::Int
+end
+
+function diagnostic(dim::Int, manifold::Manifold, selected::Vector{Int},
+                    params::LMCLUSParameters, mdl::Float64, removed::Int, ns::Int)
+    fname = "trace/$(int(time()))-D$dim.diag"
+    d = Diagnostic(manifold, selected, params, mdl, removed, ns)
+    open(fname, "w") do io
+        serialize(io, d)
+    end
+end
+
+function diagnostic(fname::String)
+    io  = open(fname, "r")
+    d = deserialize(io)::Diagnostic
+    close(io)
+    return d
+end
