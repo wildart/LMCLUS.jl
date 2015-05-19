@@ -57,7 +57,7 @@ show(io::IO, p::LMCLUSParameters) =
     Max dimension (max_dim): $(p.max_dim)
     Approximate number of clusters (cluster_number): $(p.cluster_number)
     Stop searching after number for clusters found (stop_after_cluster): $(p.stop_after_cluster)
-    Force algorithm to search in higher dimensions: $(p.force_max_dim)
+    Force algorithm to search in higher dimensions (force_max_dim): $(p.force_max_dim)
     Noise size (noise_size): $(p.noise_size)
     Best bound (best_bound): $(p.best_bound)
     Error bound (error_bound): $(p.error_bound)

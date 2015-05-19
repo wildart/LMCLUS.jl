@@ -201,7 +201,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
         end
 
         #diagnostic(sep_dim, best_manifold, selected, params, mdl, ns, length(filtered))
-        !params.force_max_dim && break
+        !params.force_max_dim && separations > 0 && break
     end
 
     # Cannot find any manifold in data then form 0D cluster
