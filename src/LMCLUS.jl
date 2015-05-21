@@ -121,12 +121,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
 
     best_manifold = Manifold()
 
-    mdl = Inf
-    mdl_manifold = Manifold()
-    mdl_filtered = Int[]
-
     for sep_dim in params.min_dim:params.max_dim
-        noise = false
         separations = 0
         ns = 0
 
@@ -162,7 +157,6 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
 
             # small amount of points is considered noise, try to bump dimension
             if length(manifold_points) <= params.noise_size
-                noise = true
                 LOG(params, 3, "noise: cluster size < ", params.noise_size," points")
                 break
             end
@@ -171,6 +165,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
             best_manifold = Manifold(sep_dim, origin, basis, manifold_points, sep)
             selected = manifold_points
             append!(filtered, removed_points)
+
             LOG(params, 3, "separated points: ", length(manifold_points))
             separations += 1
         end
@@ -180,23 +175,21 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
             break
         end
 
-        if params.mdl && !noise && indim(best_manifold) > 0 && separations > 0
-            l = MDLength(best_manifold, X[:, selected];
-                        P = params.mdl_precision, dist = :OptimalQuant, #Empirical
+        # check compression ratio
+        if params.mdl && indim(best_manifold) > 0 && separations > 0
+            mmdl = mdl(best_manifold, X[:, selected];
+                        Pm = params.mdl_model_precision,
+                        Pd = params.mdl_data_precision,
+                        dist = :OptimalQuant, #Empirical
                         ɛ = params.mdl_quant_error)
-            cfl = params.mdl_precision*indim(best_manifold)*length(selected)
-            if cfl/l < params.mdl_compres_ratio
-                if l < mdl
-                    LOG(params, 4, "MDL improved: $l < $mdl (C: $(outdim(mdl_manifold)), D: $(indim(mdl_manifold)), R: $cfl)")
-                    mdl = l
-                    mdl_manifold = copy(best_manifold)
-                    mdl_filtered = copy(filtered)
-                else
-                    LOG(params, 4, "MDL is not improved: $(l) >= $(mdl) (C: $(outdim(mdl_manifold)), D: $(indim(mdl_manifold)))")
-                end
-            else
-                mdl = cfl
-                LOG(params, 4, "MDL does not provide improvement over raw data encoding: $cfl/$l >= $(cfl/l)")
+            mraw = raw(best_manifold, params.mdl_model_precision)
+            cratio = mraw/mmdl
+            LOG(params, 4, "MDL: $mmdl, RAW: $mraw, COMPRESS: $cratio")
+            if cratio < params.mdl_compres_ratio
+                LOG(params, 3, "MDL: low compression ration $cratio < (params.mdl_compres_ratio). Reject manifold... ")
+                #return manifold points into dataset
+                append!(filtered, selected)
+                continue
             end
         end
 
@@ -209,19 +202,6 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
         n = size(X, 1)
         best_manifold = Manifold(0, zeros(n), eye(n,n), selected, Separation())
         LOG(params, 3, "no linear manifolds found in data, 0D cluster formed")
-    end
-
-    # Check final best manifold MDL score
-    #tmp_manifold = Manifold(best_dim, best_origin, best_basis, selected, best_sep)
-    if params.mdl
-        l = MDLength(best_manifold, X[:, selected];
-                    P = params.mdl_precision, dist = :Empirical,
-                    ɛ = params.mdl_quant_error)
-        if l > mdl
-            best_manifold = mdl_manifold
-            filtered = mdl_filtered
-            LOG(params, 4, "MDL degraded: $(l) > $(mdl) (Rollback to C: $(outdim(best_manifold)), D: $(indim(best_manifold)), F: $(length(filtered)))")
-        end
     end
 
     best_manifold, filtered

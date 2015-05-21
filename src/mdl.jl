@@ -101,7 +101,11 @@ function entropy_dl{T<:FloatingPoint}(M::Manifold, X::Matrix{T}, dist::Symbol, �
     return E
 end
 
-function MDLength{T<:FloatingPoint}(M::Manifold, X::Matrix{T};
-            P::Int = 32, dist::Symbol = :Gaussian, ɛ::T = 1e-3)
-    return model_dl(M, X, P) + data_dl(M, X, P, dist, ɛ)
+function mdl{T<:FloatingPoint}(M::Manifold, X::Matrix{T};
+            Pm::Int = 32, Pd::Int=16, dist::Symbol = :Gaussian, ɛ::T = 1e-3)
+    return model_dl(M, X, Pm) + data_dl(M, X, Pd, dist, ɛ)
+end
+
+function raw(M::Manifold, Pm::Int)
+    return Pm*outdim(M)*length(mean(M))
 end

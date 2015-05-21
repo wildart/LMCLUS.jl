@@ -20,7 +20,8 @@ type LMCLUSParameters
     dim_adjustment::Bool
     dim_adjustment_ratio::Float64
     mdl::Bool
-    mdl_precision::Int
+    mdl_model_precision::Int
+    mdl_data_precision::Int
     mdl_quant_error::Float64
     mdl_compres_ratio::Float64
     log_level::Int
@@ -30,7 +31,7 @@ type LMCLUSParameters
         max_dim,  # max_dim
         10,       # cluster_number
         1000,     # stop_after_cluster
-        true,     # force_max_dim
+        false,    # force_max_dim
         0,        # hist_bin_size
         20,       # noise_size
         1.0,      # best_bound
@@ -45,9 +46,10 @@ type LMCLUSParameters
         false,    # dim_adjustment
         0.99,     # dim_adjustment_ratio
         false,    # mdl
-        16,       # mdl_precision
+        32,       # mdl_model_precision
+        16,       # mdl_data_precision
         0.0001,   # mdl_quant_error
-        1.0,      # mdl_compres_ratio
+        1.05,     # mdl_compres_ratio
         0)        # log_level
 end
 
@@ -72,7 +74,8 @@ show(io::IO, p::LMCLUSParameters) =
     Manifold dimensionality adjustment (dim_adjustment): $(p.dim_adjustment)
     Ratio of manifold principal subspace variance (dim_adjustment_ratio): $(p.dim_adjustment_ratio)
     Use MDL heuristic (mdl): $(p.mdl)
-    MDL precision encoding (mdl_precision): $(p.mdl_precision)
+    MDL model precision encoding (mdl_model_precision): $(p.mdl_model_precision)
+    MDL data precision encoding (mdl_data_precision): $(p.mdl_data_precision)
     MDL quantizing error (mdl_quant_error): $(p.mdl_quant_error)
     MDL compression ratio threshold (mdl_compres_ratio): $(p.mdl_compres_ratio)
     Log level (log_level): $(p.log_level)""")
