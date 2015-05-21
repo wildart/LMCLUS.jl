@@ -186,10 +186,8 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
             cratio = mraw/mmdl
             LOG(params, 4, "MDL: $mmdl, RAW: $mraw, COMPRESS: $cratio")
             if cratio < params.mdl_compres_ratio
-                LOG(params, 3, "MDL: low compression ration $cratio < (params.mdl_compres_ratio). Reject manifold... ")
-                #return manifold points into dataset
-                append!(filtered, selected)
-                continue
+                LOG(params, 3, "MDL: low compression ration $cratio, required $(params.mdl_compres_ratio). Reject manifold... ")
+                continue #to higher dimensions
             end
         end
 
