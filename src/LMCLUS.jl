@@ -51,7 +51,7 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters)
     end
 
     d, n = size(X)
-    index = [1:n]
+    index = collect(1:n)
     cluster_number = 0
     manifolds = Manifold[]
 
@@ -64,7 +64,8 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters)
     # Main loop through dataset
     while length(index) > params.noise_size
         # Find one manifold
-        best_manifold, remains = find_manifold(X, index, params)
+        best_manifold, remains = find_manifold(X, index, params, length(manifolds))
+        indim(best_manifold) < 0 && continue # not manifold found
         cluster_number += 1
 
         # Perform dimensioality regression
@@ -114,7 +115,8 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters)
 end
 
 # Find manifold in multiple dimensions
-function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, params::LMCLUSParameters)
+function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1},
+                                         params::LMCLUSParameters, found::Int=0)
     filtered = Int[]
     selected = Array(Int, length(index))
     copy!(selected, index)
@@ -126,7 +128,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
         ns = 0
 
         while true
-            origin, basis, sep, ns = find_best_separation(X[:, selected], sep_dim, params)
+            origin, basis, sep, ns = find_best_separation(X[:, selected], sep_dim, params, found)
             LOG(params, 4, "best bound: ", criteria(sep), " (", params.best_bound, ")")
             LOG(params, 4, "threshold: ", threshold(sep))
             LOG(params, 4, "# of samples: ", ns)
@@ -182,12 +184,14 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1}, para
                         Pd = params.mdl_data_precision,
                         dist = :OptimalQuant, #Empirical
                         ɛ = params.mdl_quant_error)
-            mraw = raw(best_manifold, params.mdl_model_precision)
+            mraw = raw(best_manifold, params.mdl_data_precision)
             cratio = mraw/mmdl
             LOG(params, 4, "MDL: $mmdl, RAW: $mraw, COMPRESS: $cratio")
             if cratio < params.mdl_compres_ratio
                 LOG(params, 3, "MDL: low compression ration $cratio, required $(params.mdl_compres_ratio). Reject manifold... ")
-                continue #to higher dimensions
+                best_manifold.d = -1
+                append!(filtered, selected)
+                !params.force_max_dim && break #to higher dimensions
             end
         end
 
@@ -214,7 +218,8 @@ best_separation(t1, t2) = criteria(t1[1]) > criteria(t2[1]) ? t1 : t2
 # 2- create distance histograms of the data points to each trial linear manifold
 # 3- of all the linear manifolds sampled select the one whose associated distance histogram
 #    shows the best separation between to modes.
-function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int, params::LMCLUSParameters)
+function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int,
+                              params::LMCLUSParameters, found::Int=0)
     full_space_dim, data_size = size(X)
 
     LOG(params, 3, "---------------------------------------------------------------------------------")
@@ -223,7 +228,7 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int, param
     LOG(params, 3, "---------------------------------------------------------------------------------")
 
     # determine number of samples of lm_dim+1 points
-    Q = sample_quantity( lm_dim, full_space_dim, data_size, params)
+    Q = sample_quantity( lm_dim, full_space_dim, data_size, params, found)
 
     # sample Q times SubSpaceDim+1 points
     best_sep = Separation()
@@ -295,7 +300,7 @@ function find_separation{T<:FloatingPoint}(X::Matrix{T}, origin::Vector{T},
         p=( P<=Q ? P : Q )
         n2=(Z_01*Z_01)/(delta_mu*delta_mu*p)
         n3= ( n1 >= n2 ? n1 : n2 )
-        n4= int(n3)
+        n4= round(Int, n3)
         n= ( size(X, 2) <= n4 ? size(X, 2)-1 : n4 )
 
         LOG(params, 4, "find_separation: try to find $n samples")
@@ -314,29 +319,29 @@ end
 # that the points sampled are from the same cluster with probability
 # of error that does not exceed an error bound.
 # Three different types of heuristics may be used depending on LMCLUS's input parameters.
-function sample_quantity(lm_dim::Int, full_space_dim::Int, data_size::Int, params::LMCLUSParameters)
+function sample_quantity(k::Int, full_space_dim::Int, data_size::Int,
+                         params::LMCLUSParameters, S_found::Int)
 
-    k = params.cluster_number
-    if k <= 1
+    S_max = params.cluster_number
+    if S_max <= 1
         return 1 # case where there is only one cluster
     end
 
-    p = 1.0 / k        # p = probability that 1 point comes from a certain cluster
-    P = p^lm_dim       # P = probability that "k+1" points are from the same cluster
+    #p = 1.0 / S_max    # p = probability that 1 point comes from a certain cluster
+    p = 1.0 / max(2, S_max-S_found)
+    P = p^k            # P = probability that "k+1" points are from the same cluster
     N = abs(log10(params.error_bound)/log10(1-P))
+    N = round(Int, N)
     num_samples = 0
 
     LOG(params, 4, "number of samples by first heuristic=", N, ", by second heuristic=", data_size*params.sampling_factor)
 
     if params.sampling_heuristic == 1
-        num_samples = int(N)
+        num_samples = N
     elseif params.sampling_heuristic == 2
-        num_samples = int(data_size*params.sampling_factor)
+        num_samples = round(Int, data_size*params.sampling_factor)
     elseif params.sampling_heuristic == 3
-        num_samples = int(data_size*params.sampling_factor)
-        if N < num_samples
-            num_samples = int(N)
-        end
+        num_samples = min(N, round(Int, data_size*params.sampling_factor))
     end
     num_samples = num_samples > 1 ? num_samples : 1
 
@@ -373,9 +378,15 @@ function orthogonalize{T<:FloatingPoint}(vecs::Matrix{T})
     basis
 end
 
+function form_basis_svd{T<:FloatingPoint}(X::Matrix{T})
+    n = size(X,1)
+    origin = mean(X,2)
+    vec(origin), svdfact((X.-origin)'/sqrt(n))[:V][:,1:end-1]
+end
+
 # Calculate histogram size
 function hist_bin_size(xs::Vector, params::LMCLUSParameters)
-    return params.hist_bin_size == 0 ? int(length(xs) * params.max_bin_portion) : params.hist_bin_size
+    return params.hist_bin_size == 0 ? (round(Int, length(xs) * params.max_bin_portion)) : params.hist_bin_size
 end
 
 # Calculates distance from point to manifold defined by basis
@@ -406,11 +417,25 @@ distance_to_manifold{T<:FloatingPoint}(
 function distance_to_manifold{T<:FloatingPoint}(
     X::Matrix{T}, origin::Vector{T}, basis::Matrix{T})
 
-    data_size = size(X, 2)
+    N, n = size(X)
+    M = size(basis,2)
     # vector to hold distances of points from basis
-    distances = zeros(Float64, data_size)
-    for i=1:data_size
-        @inbounds distances[i] = distance_to_manifold(X[:,i], origin, basis)
+    distances = zeros(T, n)
+    tran = zeros(X)
+    @simd for i in 1:n
+        @simd for j in 1:N
+            c = X[j,i] - origin[j]
+            @inbounds tran[j,i] = c
+            @inbounds distances[i] += c*c
+        end
+    end
+    proj = At_mul_B(basis,tran)
+    @simd for i in 1:n
+        b = 0.0
+        @simd for j in 1:M
+            @inbounds b += proj[j,i]*proj[j,i]
+        end
+        @inbounds distances[i] = sqrt(distances[i]-b)
     end
     return distances
 end

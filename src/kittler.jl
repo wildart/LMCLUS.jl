@@ -68,7 +68,7 @@ function kittler{T<:FloatingPoint}(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5, 
 
     # Global minimum parameters
     depth, global_min = find_global_min(J, tol)
-    min_index = int(global_min)
+    min_index = round(Int, global_min)
     threshold = minX + ( global_min * (maxX - minX) / N )
     #threshold2 = (r[min_index] + r[min_index+1])/2 # or from histogram bins' edges
     discriminability = (abs(Mu1[min_index]-Mu2[min_index]))/(sqrt(Var1[min_index]+Var2[min_index]))
@@ -112,20 +112,20 @@ function find_global_min{T<:FloatingPoint}(J::Vector{T}, tol)
             loc_min=( lmin + rmin - 1 ) / 2
 
             # Monotonically ascend to the left
-            lheight = int(loc_min)
+            lheight = round(Int, loc_min)
             while lheight > 1 && J[lheight-1] >= J[lheight]
                 lheight -= 1
             end
 
             # Monotonically ascend to the right
-            rheight = int(loc_min)
+            rheight = round(Int, loc_min)
             while rheight < N && J[rheight] <= J[rheight+1]
                 rheight += 1
             end
 
             # Compute depth
             local_depth = 0
-            local_depth = (J[lheight] < J[rheight] ? J[lheight] : J[rheight]) - J[int(loc_min)]
+            local_depth = (J[lheight] < J[rheight] ? J[lheight] : J[rheight]) - J[round(Int, loc_min)]
 
             if local_depth > depth
                 depth = local_depth

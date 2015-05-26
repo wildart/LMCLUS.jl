@@ -3,13 +3,13 @@ univar{T<:FloatingPoint}(interval::Vector{T}) = (1//12)*(interval).^2
 
 # Optimal number of bins given constant C over interval
 opt_bins{T<:FloatingPoint}(intervals::Vector{T}, C::T) =
-    int( ceil(intervals * exp( (C - sum(intervals))/length(intervals) ), 0 ) )
+    round(Int, ceil(intervals * exp( (C - sum(intervals))/length(intervals) ), 0 ) )
 
 # Quantizing error
 quant_error(intervals, N_k_opt) = sum(univar(intervals./N_k_opt))
 
 # Optimal quantization of the interval
-function opt_quant{T<:FloatingPoint}(intervals::Vector{T}, ɛ::T; tot::Int = 1000, α::T = 0.5)
+function opt_quant{T<:FloatingPoint}(intervals::Vector{T}, ɛ::T; tot::Int = 10000, α::T = 0.5)
     C = 1.0
     i = 1
     N_k_opt = ones(length(intervals))
@@ -61,18 +61,18 @@ function entropy_dl{T<:FloatingPoint}(M::Manifold, X::Matrix{T}, dist::Symbol, �
         Σ = OP*OP'
         E += mvd_entropy(m, det(Σ))
     elseif dist == :Empirical # for 0D manifold only empirical estimate is avalible
-        F = svdfact(Xtr)
+        F = svdfact(Xtr'/sqrt(n))
         r = (m+1):n
         ri = 1:length(r)
-        BC = F[:U][:,r]
-        Y = BC*BC'*Xtr
+        BC = F[:V][:,r]
+        Y = BC'*Xtr
         Ymin = vec(minimum(Y, 2))
         Ymax = vec(maximum(Y, 2))
-        intervals = abs(Ymax - Ymin) #2*max(abs(Ymin), abs(Ymax))
+        intervals = abs(Ymax - Ymin) #TODO: normalize intervals to unit length
         if ɛ < 1.
-            bins, _ = opt_quant(intervals[ri], ɛ)
+            bins, _ = opt_quant(intervals/maximum(intervals), ɛ)
         else
-            bins = fill(int(ɛ), length(r))
+            bins = fill(round(Int,ɛ), length(r))
         end
         for i in ri
             Yb = linspace(Ymin[i], Ymax[i], bins[i]+1)
@@ -81,15 +81,14 @@ function entropy_dl{T<:FloatingPoint}(M::Manifold, X::Matrix{T}, dist::Symbol, �
             E += -sum(map(x-> x == 0. ? 0. : x*log2(x), h))
         end
     elseif dist == :OptimalQuant
-        F = svdfact(Xtr)
+        F = svdfact(Xtr'/sqrt(n))
         r = (m+1):n
-        ri = 1:length(r)
-        BC = F[:U][:,r]
-        Y = BC*BC'*Xtr
+        BC = F[:V][:,r]
+        Y = BC'*Xtr
         Ymin = vec(minimum(Y, 2))
         Ymax = vec(maximum(Y, 2))
         intervals = abs(Ymax - Ymin)
-        bins, sqerr, C = opt_quant(intervals[ri], ɛ)
+        bins, sqerr, C = opt_quant(intervals/maximum(intervals), ɛ)
         E = C/log(2)
     elseif dist == :Center
         for i in 1:outdim(M)

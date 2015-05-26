@@ -7,14 +7,14 @@ module TestLMCLUS
 
 	# Test sampling parameters
 	p.cluster_number = 1
-	@test LMCLUS.sample_quantity(1,3,1000,p) == 1
+	@test LMCLUS.sample_quantity(1,3,1000,p,1) == 1
 	p.cluster_number = 2
 	p.sampling_heuristic = 1
-	@test LMCLUS.sample_quantity(1,3,1000,p) == 13
+	@test LMCLUS.sample_quantity(1,3,1000,p,1) == 13
 	p.sampling_heuristic = 2
-	@test LMCLUS.sample_quantity(1,3,1000,p) == 10
+	@test LMCLUS.sample_quantity(1,3,1000,p,1) == 10
 	p.sampling_heuristic = 3
-	@test LMCLUS.sample_quantity(1,3,1000,p) == 10
+	@test LMCLUS.sample_quantity(1,3,1000,p,1) == 10
 
 	# Test data sampling
 	@test size(unique(LMCLUS.randperm2(10,5)),1) == 5
@@ -30,15 +30,15 @@ module TestLMCLUS
 	@test_approx_eq LMCLUS.form_basis(data)[2] result
 
 	# Test distance calculation
-	basis = float(reshape([1,0,0,0,1,0],3,2))
-	point = vec([1.0,1.0,1.0])
+	basis = reshape([1.,0.,0.,0.,1.,0.],3,2)
+	point = [1.0,1.0,1.0]
 	@test_approx_eq distance_to_manifold(point, basis) 1.0
 
 	# Test parameters
 	l = 1000
 	x = rand(l)
 	p = LMCLUSParameters(5)
-	@test LMCLUS.hist_bin_size(x, p) == int(l*p.max_bin_portion)
+	@test LMCLUS.hist_bin_size(x, p) == round(Int, l*p.max_bin_portion)
 	p.hist_bin_size = 20
 	@test LMCLUS.hist_bin_size(x, p) == p.hist_bin_size
 
@@ -52,7 +52,8 @@ module TestLMCLUS
 	println(p) # test show()
 
 	ds = readdlm(Pkg.dir("LMCLUS", "test", "testData"), ',')
-	manifolds = lmclus(ds[:,1:end-1]',p)
+	data = ds[:,1:end-1]'
+	manifolds = lmclus(data,p)
 	@test length(manifolds) >= 3
 	@test sum(map(m->length(m.points), manifolds)) == size(ds, 1)
 	print("Comparing indexes of manifolds: ")
@@ -66,18 +67,18 @@ module TestLMCLUS
 	# Sampling
 	p.histogram_sampling = true
 	p.cluster_number = 3
-	manifolds = lmclus(ds[:,1:end-1]',p)
+	manifolds = lmclus(data,p)
 	@test length(manifolds) >= 3
 	p.histogram_sampling = false
 
 	# MDL
 	p.mdl = true
-	manifolds = lmclus(ds[:,1:end-1]',p)
+	manifolds = lmclus(data,p)
 	@test length(manifolds) >= 3
 	p.mdl = false
 
 	# RNG seed
 	p.random_seed = 0
-	manifolds = lmclus(ds[:,1:end-1]',p)
+	manifolds = lmclus(data,p)
 	@test length(manifolds) >= 3
 end

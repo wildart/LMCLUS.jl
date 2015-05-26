@@ -11,7 +11,7 @@ module TestMDL
         @assert size(B) == (N,M) "Define bounds for every dimension"
         S = Separation()
         S.threshold = θ
-        manifold = Manifold(M, zeros(N), B, int(linspace(1, C, C)), S)
+        manifold = Manifold(M, zeros(N), B, round(Int, linspace(1, C, C)), S)
 
         c = 1
         X = zeros(N,C)
@@ -35,7 +35,8 @@ module TestMDL
         return X, manifold
     end
 
-    P = 32       # Precision encoding constant
+    Pm = 32      # Precision encoding constant for model
+    Pd = 16      # Precision encoding constant for data
     N = 2        # Space dimension
     M = 1        # Linear manifold dimension
     C = 100      # Size of a LM cluster
@@ -46,14 +47,14 @@ module TestMDL
 
     srand(923487298)
     Xg, Mg = generate_lm(N, M, C, B, bounds, θ, :Gausian; σs = σs)
-    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:Uniform)   3340 1
-    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:Gaussian)  3437 1
-    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:Empirical, ɛ = 1e-4) 3494 1 # quantization
-    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:Empirical, ɛ = 20.0) 3716 1 # bin # fixed
-    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:OptimalQuant, ɛ = 1e-4) 3800 1 # optimal quantizing
+    @test_approx_eq_eps LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Uniform)   1740 1
+    @test_approx_eq_eps LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Gaussian)  1838 1
+    @test_approx_eq_eps LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Empirical, ɛ = 1e-4) 2188 1 # quantization
+    @test_approx_eq_eps LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Empirical, ɛ = 20.0) 2115 1 # bin # fixed
+    @test_approx_eq_eps LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:OptimalQuant, ɛ = 1e-4) 2345 1 # optimal quantizing
     Mg.d = 0
-    @test_approx_eq     LMCLUS.MDLength(Mg, Xg, P = P, dist=:None)      6464 # (points + center)*32*dim
-    @test_approx_eq_eps LMCLUS.MDLength(Mg, Xg, P = P, dist=:Center)    169  1
+    @test_approx_eq     LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:None)      3264
+    @test_approx_eq_eps LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Center)    169  1
 
     # Quantization
     @test_approx_eq LMCLUS.univar([1.]) [1./12.]
@@ -62,9 +63,3 @@ module TestMDL
     @test bins[1] == 3
     @test ɛ < 1e-2
 end
-
-# draw(PNG("mdl.png", 9inch, 9inch/golden),
-# plot(x=vec(Xtr[1,:]), y=vec(Xtr[2,:]), Geom.point,
-#     Theme(default_point_size=0.8mm, panel_fill=color("white")))
-# )
-# )
