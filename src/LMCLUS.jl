@@ -121,7 +121,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1},
     selected = Array(Int, length(index))
     copy!(selected, index)
 
-    best_manifold = Manifold()
+    best_manifold = Manifold(0, zeros(params.max_dim), eye(params.max_dim,params.max_dim), Int[], Separation())
 
     for sep_dim in params.min_dim:params.max_dim
         separations = 0
@@ -131,7 +131,6 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1},
             origin, basis, sep, ns = find_best_separation(X[:, selected], sep_dim, params, found)
             LOG(params, 4, "best bound: ", criteria(sep), " (", params.best_bound, ")")
             LOG(params, 4, "threshold: ", threshold(sep))
-            LOG(params, 4, "# of samples: ", ns)
 
             # No good separation found
             if criteria(sep) < params.best_bound
@@ -164,11 +163,11 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1},
             end
 
             # Create manifold cluster from good separation found
-            best_manifold = Manifold(sep_dim, origin, basis, manifold_points, sep)
             selected = manifold_points
+            best_manifold = Manifold(sep_dim, origin, basis, selected, sep)
             append!(filtered, removed_points)
 
-            LOG(params, 3, "separated points: ", length(manifold_points))
+            LOG(params, 3, "separated points: ", length(selected))
             separations += 1
         end
 
@@ -189,8 +188,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1},
             LOG(params, 4, "MDL: $mmdl, RAW: $mraw, COMPRESS: $cratio")
             if cratio < params.mdl_compres_ratio
                 LOG(params, 3, "MDL: low compression ration $cratio, required $(params.mdl_compres_ratio). Reject manifold... ")
-                best_manifold.d = -1
-                append!(filtered, selected)
+                best_manifold.d = 0
                 !params.force_max_dim && break #to higher dimensions
             end
         end
@@ -201,8 +199,9 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1},
 
     # Cannot find any manifold in data then form 0D cluster
     if indim(best_manifold) == 0
-        n = size(X, 1)
-        best_manifold = Manifold(0, zeros(n), eye(n,n), selected, Separation())
+        if outdim(best_manifold) == 0
+            best_manifold.points = selected
+        end
         LOG(params, 3, "no linear manifolds found in data, 0D cluster formed")
     end
 
