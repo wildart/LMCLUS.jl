@@ -59,11 +59,8 @@ function sample_points{T<:FloatingPoint}(X::Matrix{T}, n::Int)
 
     # If at this point we do not have proper sample
     # then our dataset doesn't have enough unique rows
-    if length(I) != n
-        warn("Dataset doesn't have enough unique points, decrease number of points")
-        I = Int[]
-    end
-    I
+    length(I) < n && warn("Dataset doesn't have enough unique points, decrease number of points")
+    return I
 end
 
 function sample_points2(X::Matrix{Float64}, n::Int, trycount::Int = 10)

@@ -1,4 +1,4 @@
-﻿module LMCLUS
+module LMCLUS
 
 using MultivariateStats
 
@@ -120,8 +120,8 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1},
     filtered = Int[]
     selected = Array(Int, length(index))
     copy!(selected, index)
-
-    best_manifold = Manifold(0, zeros(params.max_dim), eye(params.max_dim,params.max_dim), Int[], Separation())
+    N = size(X,1) # full space dimension
+    best_manifold = Manifold(N, zeros(N), eye(N,N), Int[], Separation())
 
     for sep_dim in params.min_dim:params.max_dim
         separations = 0
@@ -188,7 +188,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1},
             LOG(params, 4, "MDL: $mmdl, RAW: $mraw, COMPRESS: $cratio")
             if cratio < params.mdl_compres_ratio
                 LOG(params, 3, "MDL: low compression ration $cratio, required $(params.mdl_compres_ratio). Reject manifold... ")
-                best_manifold.d = 0
+                best_manifold.d = N
                 !params.force_max_dim && break #to higher dimensions
             end
         end
@@ -198,11 +198,11 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1},
     end
 
     # Cannot find any manifold in data then form 0D cluster
-    if indim(best_manifold) == 0
+    if indim(best_manifold) == N
         if outdim(best_manifold) == 0
             best_manifold.points = selected
         end
-        LOG(params, 3, "no linear manifolds found in data, 0D cluster formed")
+        LOG(params, 3, "no linear manifolds found in data, noise cluster formed")
     end
 
     best_manifold, filtered
@@ -304,11 +304,9 @@ function find_separation{T<:FloatingPoint}(X::Matrix{T}, origin::Vector{T},
 
         LOG(params, 4, "find_separation: try to find $n samples")
         sampleIndex = sample_points(X, n)
-    else
-        sampleIndex = 1:size(X,2)
     end
 
-    distances = distance_to_manifold(X[:,sampleIndex] , origin, basis)
+    distances = distance_to_manifold(params.histogram_sampling ? X[:,sampleIndex] : X , origin, basis)
     # Define histogram size
     bins = hist_bin_size(distances, params)
     return kittler(distances, bins=bins)
