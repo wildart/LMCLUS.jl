@@ -65,7 +65,6 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters)
     while length(index) > params.noise_size
         # Find one manifold
         best_manifold, remains = find_manifold(X, index, params, length(manifolds))
-        indim(best_manifold) < 0 && continue # not manifold found
         cluster_number += 1
 
         # Perform dimensioality regression
@@ -118,8 +117,7 @@ end
 function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1},
                                          params::LMCLUSParameters, found::Int=0)
     filtered = Int[]
-    selected = Array(Int, length(index))
-    copy!(selected, index)
+    selected = copy(index)
     N = size(X,1) # full space dimension
     best_manifold = Manifold(N, zeros(N), eye(N,N), Int[], Separation())
 
@@ -328,17 +326,18 @@ function sample_quantity(k::Int, full_space_dim::Int, data_size::Int,
     p = 1.0 / max(2, S_max-S_found)
     P = p^k            # P = probability that "k+1" points are from the same cluster
     N = abs(log10(params.error_bound)/log10(1-P))
-    N = round(Int, N)
     num_samples = 0
 
     LOG(params, 4, "number of samples by first heuristic=", N, ", by second heuristic=", data_size*params.sampling_factor)
 
     if params.sampling_heuristic == 1
-        num_samples = N
+        num_samples = isinf(N) ? typemax(Int) : round(Int, N)
     elseif params.sampling_heuristic == 2
-        num_samples = round(Int, data_size*params.sampling_factor)
+        NN = data_size*params.sampling_factor
+        num_samples = isinf(NN) ? typemax(Int) : round(Int, NN)
     elseif params.sampling_heuristic == 3
-        num_samples = min(N, round(Int, data_size*params.sampling_factor))
+        NN = min(N, data_size*params.sampling_factor)
+        num_samples = isinf(NN) ? typemax(Int) : round(Int, NN)
     end
     num_samples = num_samples > 1 ? num_samples : 1
 
