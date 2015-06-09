@@ -1,4 +1,4 @@
-import Base: show, dump, mean, copy
+import Base: show, dump, mean, copy, serialize, deserialize
 import MultivariateStats: indim, outdim, projection
 
 ## histogram separation type
@@ -13,13 +13,12 @@ end
 Separation() = Separation(-Inf, eps(), Inf, -1, Float64[], Int[])
 
 # properties
-criteria(sep::Separation) = sep.depth*sep.discriminability
+criteria(sep::Separation) = sep.discriminability*sep.depth
 threshold(sep::Separation) = sep.threshold
 
 function show(io::IO, S::Separation)
     print(io, "Separation($(criteria(S)), θ=$(threshold(S)))")
 end
-
 
 ## manifold type
 type Manifold

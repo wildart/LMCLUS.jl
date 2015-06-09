@@ -53,6 +53,14 @@ module TestLMCLUS
 
 	ds = readdlm(Pkg.dir("LMCLUS", "test", "testData"), ',')
 	data = ds[:,1:end-1]'
+
+	# test separation calculations
+	s = LMCLUS.calculate_separation(data, [1,2,3], p)
+	@test typeof(s[1]) == Separation
+	@test typeof(s[2]) == Vector{Float64}
+	@test typeof(s[3]) == Matrix{Float64}
+
+	# run clustering
 	manifolds = lmclus(data,p)
 	@test length(manifolds) >= 3
 	@test sum(map(m->length(m.points), manifolds)) == size(ds, 1)

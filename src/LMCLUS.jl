@@ -1,6 +1,7 @@
 module LMCLUS
 
 using MultivariateStats
+using Compat
 
 export  lmclus,
         LMCLUSParameters, Diagnostic,
@@ -237,17 +238,8 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int,
         # Parallel implementation
         best_sep, best_origin, best_basis = @parallel (best_separation) for i = 1:Q
             sample = sample_points(X, lm_dim+1)
-            if length(sample) == 0
-                (Separation(), Float64[], zeros(0, 0))
-            else
-                origin, basis = form_basis(X[:, sample])
-                sep = try
-                    find_separation(X, origin, basis, params)
-                catch e
-                    Separation()
-                end
-                (sep, origin, basis)
-            end
+            length(sample) == 0 ? (Separation(), Array(T, 0), Array(T, 0, 0)) :
+                                   calculate_separation(X, sample, params)
         end
     else
         # Single thread implementation
@@ -257,18 +249,12 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int,
             if length(sample) == 0
                 continue
             end
-            origin, basis = form_basis(X[:, sample])
-            try
-                sep = find_separation(X, origin, basis, params)
-                LOG(params, 5, "SEP: ", criteria(sep), ", BSEP:", criteria(best_sep))
-                if criteria(sep) > criteria(best_sep)
-                    best_sep = sep
-                    best_origin = origin
-                    best_basis = basis
-                end
-            catch e
-                LOG(params, 5, e)
-                continue
+            sep, origin, basis = calculate_separation(X, sample, params)
+            LOG(params, 5, "SEP: ", criteria(sep), ", BSEP:", criteria(best_sep))
+            if criteria(sep) > criteria(best_sep)
+                best_sep = sep
+                best_origin = origin
+                best_basis = basis
             end
         end
     end
@@ -281,6 +267,17 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int,
         "  depth=", best_sep.depth, "  criteria=", cr)
     end
     return best_origin, best_basis, best_sep, Q
+end
+
+function calculate_separation{T<:FloatingPoint}(X::Matrix{T}, sample::Vector{Int}, params::LMCLUSParameters)
+    origin, basis = form_basis(X[:, sample])
+    sep = try
+        find_separation(X, origin, basis, params)
+    catch e
+        LOG(params, 5, string(e))
+        Separation()
+    end
+    return (sep, origin, basis)
 end
 
 # Find separation criteria
@@ -297,7 +294,7 @@ function find_separation{T<:FloatingPoint}(X::Matrix{T}, origin::Vector{T},
         p=( P<=Q ? P : Q )
         n2=(Z_01*Z_01)/(delta_mu*delta_mu*p)
         n3= ( n1 >= n2 ? n1 : n2 )
-        n4= round(Int, n3)
+        n4= @compat round(Int, n3)
         n= ( size(X, 2) <= n4 ? size(X, 2)-1 : n4 )
 
         LOG(params, 4, "find_separation: try to find $n samples")
@@ -331,13 +328,13 @@ function sample_quantity(k::Int, full_space_dim::Int, data_size::Int,
     LOG(params, 4, "number of samples by first heuristic=", N, ", by second heuristic=", data_size*params.sampling_factor)
 
     if params.sampling_heuristic == 1
-        num_samples = isinf(N) ? typemax(Int) : round(Int, N)
+        num_samples = isinf(N) ? typemax(Int) : @compat round(Int, N)
     elseif params.sampling_heuristic == 2
         NN = data_size*params.sampling_factor
-        num_samples = isinf(NN) ? typemax(Int) : round(Int, NN)
+        num_samples = isinf(NN) ? typemax(Int) : @compat round(Int, NN)
     elseif params.sampling_heuristic == 3
         NN = min(N, data_size*params.sampling_factor)
-        num_samples = isinf(NN) ? typemax(Int) : round(Int, NN)
+        num_samples = isinf(NN) ? typemax(Int) : @compat round(Int, NN)
     end
     num_samples = num_samples > 1 ? num_samples : 1
 
@@ -382,7 +379,7 @@ end
 
 # Calculate histogram size
 function hist_bin_size(xs::Vector, params::LMCLUSParameters)
-    return params.hist_bin_size == 0 ? (round(Int, length(xs) * params.max_bin_portion)) : params.hist_bin_size
+    return params.hist_bin_size == 0 ? (@compat round(Int, length(xs) * params.max_bin_portion)) : params.hist_bin_size
 end
 
 # Calculates distance from point to manifold defined by basis
@@ -431,7 +428,7 @@ function distance_to_manifold{T<:FloatingPoint}(
         @simd for j in 1:M
             @inbounds b += proj[j,i]*proj[j,i]
         end
-        @inbounds distances[i] = sqrt(distances[i]-b)
+        @inbounds distances[i] = sqrt(abs(distances[i]-b))
     end
     return distances
 end

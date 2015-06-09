@@ -1,4 +1,4 @@
-my_tests = ["kittler_test.jl", "lmclus_test.jl", "lmclus_p_test.jl", "mdl_test.jl"]
+my_tests = ["types_test.jl", "kittler_test.jl", "lmclus_test.jl", "lmclus_p_test.jl", "mdl_test.jl"]
 
 println("Running tests:")
 
