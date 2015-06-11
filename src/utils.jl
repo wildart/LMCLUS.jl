@@ -66,128 +66,58 @@ function sample_points{T<:FloatingPoint}(X::Matrix{T}, n::Int)
     return I
 end
 
-function sample_points2(X::Matrix{Float64}, n::Int, trycount::Int = 10)
-    if n <= 0
-        error("Sample size must be positive")
-    end
-    data_rows, data_cols = size(X)
-    I = Int[]
+# Accepts contingency table with row as classes, c, and columns as clusters, k.
+function V_measure(A::Matrix; β = 1.0)
+    C, K = size(A)
+    N = sum(A)
 
-    tries = 0
-    while length(I) < n
-        idx = rand(1:data_cols)
-        if idx ∉ I
-            if length(I) > 0  # Check points coordinates
-                found = false
-                for i in I
-                    if X[:, i] == X[:, idx]
-                        tries += 1
-                        found = true
-                        break
-                    end
-                end
-                if found
-                    continue
-                end
-                push!(I, idx)
-                tries = 0
-            else
-                push!(I, idx)
+    # Homogeneity
+    hck = 0.0
+    for k in 1:K
+        d = sum(A[:,k])
+        for c in 1:C
+            if A[c,k] != 0 && d != 0
+                hck += log(A[c,k]/d) * A[c,k]/N
             end
         end
-        if tries > trycount
-            error("Dataset doesn't have enough unique points, decrease number of points")
+    end
+    hck = -hck
+
+    hc = 0.0
+    for c in 1:C
+        n = sum(A[c,:]) / N
+        if n != 0.0
+            hc += log(n) * n
         end
     end
-    return I
-end
+    hc = -hc
 
-# Bootstrap histogram
-function histbst{T<:FloatingPoint}(x::Vector{T}; bins::Int = 10)
-    x = sort(x)
-    counts = Int[]
+    h = (hc == 0.0 || hck == 0.0) ? 1 : 1 - hck/hc
 
-    # count points
-    p = x[1]
-    push!(counts, 1)
-    i = 2
-    while i <= length(x)
-        if (x[i] - p) < eps()
-            counts[end] += 1
-            deleteat!(x, i)
-        else
-            p = x[i]
-            i+=1
-            push!(counts, 1)
+    # Completeness
+    hkc = 0.0
+    for c in 1:C
+        d = sum(A[c,:])
+        for k in 1:K
+            if A[c,k] != 0 && d != 0
+                hkc += log(A[c,k]/d) * A[c,k]/N
+            end
         end
     end
-    @assert length(x) == length(counts)
+    hkc = -hkc
 
-    S = length(x)
-    L = int(sqrt(S)/2.)
-    if (L < 1)
-        return zeros(T, 0, 0)
-    end
-
-    # generate a mass function
-    emf_x = Array(T, S-2*L)
-    emf_y = Array(T, S-2*L)
-    for i in L+1:S-L
-        emf_x[i-L] = x[i]
-        c = 0 # Cout all points in interval
-        for j in -L:L
-            c += counts[i+j]
+    hk = 0.0
+    for k in 1:K
+        n = sum(A[:,k]) / N
+        if n != 0.0
+            hc += log(n) * n
         end
-        emf_y[i-L] = c/(x[i+L]-x[i-L])
     end
+    hk = -hk
 
-    # generate bins boundaries
-    min_d, max_d = emf_x[1], emf_x[end]
-    bbins = [ min_d + i*(max_d-min_d)/bins for i in 1:bins+1]
+    c = (hk == 0.0 || hkc == 0.0) ? 1 : 1 - hkc/hk
 
-    # interpolate and integrate linear piecewise PDF
-    lppdf = Array(T, bins)
-    lppdf[1] = emf_y[1]
-    ilppdf = emf_y[1]
-    for i in 1:bins
-        tail = sum(emf_x .< bbins[i])
-        ly = emf_y[tail]
-        lx = emf_x[tail]
-        gy = emf_y[tail+1]
-        gx = emf_x[tail+1]
-        lppdf[i] = (bbins[i] - lx)*(gy-ly)/(gx-lx)+ly
-        ilppdf += 2*lppdf[i]
-    end
-    lppdf[bins] = emf_y[end]
-    ilppdf += lppdf[bins]
-    ilppdf *=(max_d-min_d)/(2*bins)
-    lppdf /= ilppdf
-    lppdf /= sum(lppdf)
-
-    lppdf
-end
-
-type Diagnostic
-    manifold::Manifold
-    selected::Vector{Int}
-    params::LMCLUSParameters
-    mdl::Float64
-    removed::Int
-    samples::Int
-end
-
-function diagnostic(dim::Int, manifold::Manifold, selected::Vector{Int},
-                    params::LMCLUSParameters, mdl::Float64, removed::Int, ns::Int)
-    fname = "trace/$(int(time()))-D$dim.diag"
-    d = Diagnostic(manifold, selected, params, mdl, removed, ns)
-    open(fname, "w") do io
-        serialize(io, d)
-    end
-end
-
-function diagnostic(fname::String)
-    io  = open(fname, "r")
-    d = deserialize(io)::Diagnostic
-    close(io)
-    return d
+    # V-measure
+    V_β = (1 + β)*h*c/(β*h + c)
+    return V_β
 end

@@ -8,7 +8,6 @@ export  lmclus,
 
         kittler, otsu,
         distance_to_manifold,
-        histbst,
 
         Separation,
         criteria,
