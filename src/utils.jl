@@ -121,3 +121,37 @@ function V_measure(A::Matrix; β = 1.0)
     V_β = (1 + β)*h*c/(β*h + c)
     return V_β
 end
+
+function histogram{T<:FloatingPoint}(V::Vector{T}, edgs)
+    VI = sortperm(V)
+    counts = zeros(Int,length(edgs)-1)
+    b = 1
+    nb = b+1
+    for i in 1:length(V)
+        if V[VI[i]] > edgs[nb]
+            b += 1
+            nb = b+1
+        end
+        counts[b] += 1
+    end
+    return counts, VI
+end
+
+# r = linspace(0.,1.,100)
+# h1 = map(x -> begin
+#     xs = rand(10000)
+#     tic()
+#     histogram(xs, r)
+#     toq()
+# end, 1:1000)
+
+# h2 = map(x -> begin
+#     xs = rand(10000)
+#     tic()
+#     hist(xs, r)
+#     toq()
+# end, 1:1000)
+
+# mean(h1), mean(h2)
+# std(h1), std(h2)
+# extrema(h1), extrema(h2)
