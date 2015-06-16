@@ -9,8 +9,9 @@ type Separation
     globalmin::Int
     hist_range::Vector{Float64}
     hist_count::Vector{Int}
+    bin_index::Vector{Int}
 end
-Separation() = Separation(-Inf, eps(), Inf, -1, Float64[], Int[])
+Separation() = Separation(-Inf, eps(), Inf, -1, Float64[], Int[], Int[])
 
 # properties
 criteria(sep::Separation) = sep.discriminability*sep.depth

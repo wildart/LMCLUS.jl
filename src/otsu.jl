@@ -6,8 +6,9 @@ function otsu{T<:FloatingPoint}(xs::Vector{T}; bins = 20, debug = false)
     minX, maxX = extrema(xs)
 
     # get normalized histogram
-    r = linspace(minX, maxX, bins)
-    r, c = hist(xs, r)
+    r = linspace(minX, maxX, bins+1)
+    #r, c = hist(xs, r)
+    r, c, bi = histogram(xs, r)
     H = c/sum(c)
     threshold, min_index, varmax = otsu(H, r, debug=debug)
     Separation(varmax, 1., threshold, min_index, r, c)

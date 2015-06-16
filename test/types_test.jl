@@ -2,7 +2,7 @@ module TestLMCLUS_Types
     using LMCLUS
     using Base.Test
 
-    s = Separation(10., 10., 10., 10, [10.], [10])
+    s = Separation(10., 10., 10., 10, [10.], [10], [10])
     io = IOBuffer()
     serialize(io, s)
     seek(io, 0)
