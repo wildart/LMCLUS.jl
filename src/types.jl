@@ -8,10 +8,10 @@ type Separation
     threshold::Float64
     globalmin::Int
     hist_range::Vector{Float64}
-    hist_count::Vector{Int}
-    bin_index::Vector{Int}
+    hist_count::Vector{UInt32}
+    bin_index::Vector{UInt32}
 end
-Separation() = Separation(-Inf, eps(), Inf, -1, Float64[], Int[], Int[])
+Separation() = Separation(-Inf, eps(), Inf, -1, Float64[], UInt32[], UInt32[])
 
 # properties
 criteria(sep::Separation) = sep.discriminability*sep.depth

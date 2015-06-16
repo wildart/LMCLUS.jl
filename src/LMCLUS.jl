@@ -272,8 +272,8 @@ function calculate_separation{T<:FloatingPoint}(X::Matrix{T}, sample::Vector{Int
     origin, basis = form_basis(X[:, sample])
     sep = try
         find_separation(X, origin, basis, params)
-    catch e
-        LOG(params, 5, string(e))
+    catch ex
+        LOG(params, 5, string(ex))
         Separation()
     end
     return (sep, origin, basis)

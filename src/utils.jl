@@ -156,12 +156,12 @@ end
 
 function histogram{T<:FloatingPoint}(V::Vector{T}, edgs)
     n = length(edgs)-1
-    counts = zeros(Int,n)
-    cindex = zeros(Int,length(V))
+    counts = zeros(UInt32,n)
+    cindex = zeros(UInt32,length(V))
     @inbounds for i in 1:length(V)
         x = V[i]
         lo = 0
-        hi = n+1
+        hi = n+2
         while lo < hi-1
             m = (lo+hi)>>>1
             if edgs[m] < x
@@ -170,8 +170,11 @@ function histogram{T<:FloatingPoint}(V::Vector{T}, edgs)
                 hi = m
             end
         end
-        counts[hi-1] += 1
-        cindex[i] = hi
+        if lo > 0
+            hi -= 1
+            counts[hi] += 1
+            cindex[i] = hi
+        end
     end
     return edgs, counts, cindex
 end
