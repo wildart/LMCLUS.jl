@@ -53,3 +53,11 @@ function dump(io::IO, M::Manifold)
     println(io, "basis: ")
     Base.showarray(io, projection(M), header=false, repr=false)
 end
+
+function assignments(Ms::Vector{Manifold})
+    lbls = zeros(Int, sum(map(m->outdim(m), Ms)))
+    for (i,m) in enumerate(Ms)
+        lbls[labels(m)] = i
+    end
+    return lbls
+end

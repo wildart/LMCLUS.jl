@@ -19,7 +19,8 @@ export  lmclus,
         labels,
         separation,
         mean,
-        projection
+        projection,
+        assignments
 
 include("types.jl")
 include("params.jl")
