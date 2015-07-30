@@ -32,24 +32,27 @@ include("mdl.jl")
 #
 # Linear Manifold Clustering
 #
-function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters)
+function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters, np::Int=nprocs())
     # Setup RNG
-    if nprocs() == 1
-        if params.random_seed == 0
-            srand(time_ns())
-        else
-            srand(params.random_seed)
-        end
+    seed = getseed(params)
+    mts = if np == 1
+        [MersenneTwister(seed)]
     else
-        if params.random_seed == 0
-            seeds = [time_ns() for i in 1:nprocs()]
-        else
-            seeds = [params.random_seed+10*i for i in 1:nprocs()]
+        isdefined(:dSFMTjump) || try
+            @eval import dSFMTjump
+        catch err
+            warn("Install `dSFMTjump` package for consistent PRNG performance in parallel mode")
         end
-        @parallel for i=1:nprocs()
-            srand(seeds[i])
-        end
+        isdefined(:dSFMTjump) ? dSFMTjump.jump(seed, np) : [MersenneTwister(seed+10*i) for i in 1:np]
     end
+    return lmclus(X, params, mts)
+end
+
+function lmclus{T<:FloatingPoint}(X::Matrix{T},
+                params::LMCLUSParameters,
+                prngs::Vector{MersenneTwister})
+
+    @assert length(prngs) >= nprocs() "Number of PRNGS cannot be less then processes."
 
     d, n = size(X)
     index = collect(1:n)
@@ -65,7 +68,7 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters)
     # Main loop through dataset
     while length(index) > params.noise_size
         # Find one manifold
-        best_manifold, remains = find_manifold(X, index, params, length(manifolds))
+        best_manifold, remains = find_manifold(X, index, params, prngs, length(manifolds))
         cluster_number += 1
 
         # Perform dimensioality regression
@@ -116,7 +119,9 @@ end
 
 # Find manifold in multiple dimensions
 function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1},
-                                         params::LMCLUSParameters, found::Int=0)
+                                         params::LMCLUSParameters,
+                                         prngs::Vector{MersenneTwister},
+                                         found::Int=0)
     filtered = Int[]
     selected = copy(index)
     N = size(X,1) # full space dimension
@@ -127,7 +132,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1},
         ns = 0
 
         while true
-            origin, basis, sep, ns = find_best_separation(X[:, selected], sep_dim, params, found)
+            sep, origin, basis, ns = find_best_separation(X[:, selected], sep_dim, params, prngs, found)
             LOG(params, 4, "best bound: ", criteria(sep), " (", params.best_bound, ")")
             LOG(params, 4, "threshold: ", threshold(sep))
 
@@ -207,17 +212,15 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1},
     best_manifold, filtered
 end
 
-#function best_manifold
-
-best_separation(t1, t2) = criteria(t1[1]) > criteria(t2[1]) ? t1 : t2
-
 # LMCLUS main function:
 # 1- sample trial linear manifolds by sampling points from the data
 # 2- create distance histograms of the data points to each trial linear manifold
 # 3- of all the linear manifolds sampled select the one whose associated distance histogram
 #    shows the best separation between to modes.
 function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int,
-                              params::LMCLUSParameters, found::Int=0)
+                              params::LMCLUSParameters,
+                              prngs::Vector{MersenneTwister},
+                              found::Int=0)
     full_space_dim, data_size = size(X)
 
     LOG(params, 3, "---------------------------------------------------------------------------------")
@@ -228,36 +231,16 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int,
     # determine number of samples of lm_dim+1 points
     Q = sample_quantity( lm_dim, full_space_dim, data_size, params, found)
 
-    # sample Q times SubSpaceDim+1 points
-    best_sep = Separation()
-    best_origin = Float64[]
-    best_basis = zeros(0, 0)
-    LOG(params, 5, "start sampling: ", Q)
+    # divide samples between PRNGs
+    samples_proc = @compat round(Int, Q / length(prngs))
 
-    if nprocs() > 1
-        # Parallel implementation
-        best_sep, best_origin, best_basis = @parallel (best_separation) for i = 1:Q
-            sample = sample_points(X, lm_dim+1)
-            length(sample) == 0 ? (Separation(), Array(T, 0), Array(T, 0, 0)) :
-                                   calculate_separation(X, sample, params)
-        end
-    else
-        # Single thread implementation
-        for i = 1:Q
-            # Sample LM_Dim+1 points
-            sample = sample_points(X, lm_dim+1)
-            if length(sample) == 0
-                continue
-            end
-            sep, origin, basis = calculate_separation(X, sample, params)
-            LOG(params, 5, "SEP: ", criteria(sep), ", BSEP:", criteria(best_sep))
-            if criteria(sep) > criteria(best_sep)
-                best_sep = sep
-                best_origin = origin
-                best_basis = basis
-            end
-        end
+    arr = Array(RemoteRef, length(prngs))
+    np = nprocs()
+    for i in 1:length(prngs)
+        arr[i] = remotecall((i%np)+1, sample_manifold, X, lm_dim+1, params, prngs[i], samples_proc)
     end
+    best_sep, best_origin, best_basis = mapreduce(rr->fetch(rr),
+        (t1,t2)->criteria(t1[1])>criteria(t2[1])?t1:t2, arr)
 
     cr = criteria(best_sep)
     if cr <= 0.
@@ -266,7 +249,29 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int,
         LOG(params, 4, "separation: width=", best_sep.discriminability,
         "  depth=", best_sep.depth, "  criteria=", cr)
     end
-    return best_origin, best_basis, best_sep, Q
+    return best_sep, best_origin, best_basis, Q
+end
+
+function sample_manifold{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int,
+                        params::LMCLUSParameters, prng::MersenneTwister, num_samples::Int)
+    best_sep = Separation()
+    best_origin = Float64[]
+    best_basis = zeros(0, 0)
+
+    for i in 1:num_samples
+        sample = sample_points(X, lm_dim, prng)
+        if length(sample) == 0
+            continue
+        end
+        sep, origin, basis = calculate_separation(X, sample, params)
+        if criteria(sep) > criteria(best_sep)
+            best_sep = sep
+            best_origin = origin
+            best_basis = basis
+        end
+    end
+
+    return best_sep, best_origin, best_basis
 end
 
 function calculate_separation{T<:FloatingPoint}(X::Matrix{T}, sample::Vector{Int}, params::LMCLUSParameters)

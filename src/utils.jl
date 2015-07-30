@@ -1,6 +1,11 @@
-# Sample uniformly k integers from the integer range 1:n, making sure that
-# the same integer is not sampled twice. the function returns an integer vector
-# containing the sampled integers.
+"""Returns seed from parameters"""
+getseed(params::LMCLUSParameters) = params.random_seed == 0 ? time_ns() : params.random_seed
+
+"""
+Sample uniformly k integers from the integer range 1:n, making sure that
+the same integer is not sampled twice. the function returns an integer vector
+containing the sampled integers.
+"""
 function randperm2(n, k)
     if n < k
         error("Sample size cannot be grater then range")
@@ -15,9 +20,11 @@ function randperm2(n, k)
     collect(sample)
 end
 
-# Sample randomly lm_dim+1 points from the dataset, making sure
-# that the same point is not sampled twice. the function will return
-# a index vector, specifying the index of the sampled points.
+"""
+Sample randomly lm_dim+1 points from the dataset, making sure
+that the same point is not sampled twice. the function will return
+a index vector, specifying the index of the sampled points.
+"""
 function sample_points{T<:FloatingPoint}(X::Matrix{T}, n::Int)
     if n <= 0
         error("Sample size must be positive")
@@ -66,7 +73,34 @@ function sample_points{T<:FloatingPoint}(X::Matrix{T}, n::Int)
     return I
 end
 
-# Accepts contingency table with row as classes, c, and columns as clusters, k.
+"""Reservoir sampling"""
+function sample_points{T<:FloatingPoint}(X::Matrix{T}, k::Int, r::MersenneTwister)
+    N, n = size(X)
+
+    I = collect(1:k)
+    for i in (k+1):n
+        j = trunc(Int, rand(r)*i)+1
+        if j <= k
+            I[j] = i
+        end
+    end
+
+    for i in 1:(k-1)
+        for j in (i+1):k
+            if all([X[k,I[i]] == X[k,I[j]] for k in 1:N])
+                warn("Sample is not unique: X[:,$(I[i])] == X[:,$(I[j])]")
+                return Int[]
+            end
+        end
+    end
+
+    return I
+end
+
+"""
+V-measure of contingency table
+Accepts contingency table with row as classes, c, and columns as clusters, k.
+"""
 function V_measure(A::Matrix; β = 1.0)
     C, K = size(A)
     N = sum(A)

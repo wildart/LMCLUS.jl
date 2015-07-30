@@ -51,7 +51,8 @@ module TestLMCLUS
 	p.random_seed = 4572489057
 	println(p) # test show()
 
-	ds = readdlm(Pkg.dir("LMCLUS", "test", "testData"), ',')
+	testDataFile = joinpath("/",split(string(lmclus.env.defs.func.code.file),'/')[1:end-2]...,"test","testData")
+	ds = readdlm(testDataFile, ',')
 	data = ds[:,1:end-1]'
 
 	# test separation calculations
