@@ -239,8 +239,20 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int,
     for i in 1:length(prngs)
         arr[i] = remotecall((i%np)+1, sample_manifold, X, lm_dim+1, params, prngs[i], samples_proc)
     end
-    best_sep, best_origin, best_basis = mapreduce(rr->fetch(rr),
-        (t1,t2)->criteria(t1[1])>criteria(t2[1])?t1:t2, arr)
+
+    # Reduce values of manifolds from remote sources
+    best_sep = Separation()
+    best_origin = Float64[]
+    best_basis = zeros(0, 0)
+    for (i, rr) in enumerate(arr)
+        sep, origin, basis, mt = fetch(rr)
+        if criteria(sep) > criteria(best_sep)
+            best_sep = sep
+            best_origin = origin
+            best_basis = basis
+        end
+        prngs[i] = mt
+    end
 
     cr = criteria(best_sep)
     if cr <= 0.
@@ -271,7 +283,7 @@ function sample_manifold{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int,
         end
     end
 
-    return best_sep, best_origin, best_basis
+    return best_sep, best_origin, best_basis, prng
 end
 
 function calculate_separation{T<:FloatingPoint}(X::Matrix{T}, sample::Vector{Int}, params::LMCLUSParameters)
