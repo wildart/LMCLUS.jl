@@ -1,3 +1,6 @@
+"""Empty manifold"""
+emptymanifold(N::Int, points::Vector{Int}=Int[]) = Manifold(N, zeros(N), eye(N,N), points, Separation())
+
 """Returns seed from parameters"""
 getseed(params::LMCLUSParameters) = params.random_seed == 0 ? time_ns() : params.random_seed
 
@@ -76,6 +79,10 @@ end
 """Reservoir sampling"""
 function sample_points{T<:FloatingPoint}(X::Matrix{T}, k::Int, r::MersenneTwister)
     N, n = size(X)
+    if n < k
+        warn("Not enough samples to construct manifold")
+        return Int[]
+    end
 
     I = collect(1:k)
     for i in (k+1):n

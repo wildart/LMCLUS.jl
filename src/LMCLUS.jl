@@ -39,7 +39,7 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters, np::In
         [MersenneTwister(seed)]
     else
         isdefined(:dSFMTjump) || try
-            @eval import dSFMTjump
+            eval(:(import dSFMTjump))
         catch err
             warn("Install `dSFMTjump` package for consistent PRNG performance in parallel mode")
         end
@@ -54,14 +54,14 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T},
 
     @assert length(prngs) >= nprocs() "Number of PRNGS cannot be less then processes."
 
-    d, n = size(X)
+    N, n = size(X)
     index = collect(1:n)
     cluster_number = 0
     manifolds = Manifold[]
 
     # Check if manifold maximum dimension is less then full dimension
-    if d <= params.max_dim
-        params.max_dim = d - 1
+    if N <= params.max_dim
+        params.max_dim = N - 1
         LOG(params, 1, "Adjusting maximum manifold dimension to $(params.max_dim)")
     end
 
@@ -111,7 +111,8 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T},
     # Rest of the points considered as noise
     if length(index) > 0
         LOG(params, 2, "outliers: $(length(index)), 0D cluster formed")
-        push!(manifolds, Manifold(0, zeros(d), eye(d,d), index, Separation()))
+        em = emptymanifold(N, index)
+        push!(manifolds, em)
     end
 
     return manifolds
@@ -125,7 +126,7 @@ function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1},
     filtered = Int[]
     selected = copy(index)
     N = size(X,1) # full space dimension
-    best_manifold = Manifold(N, zeros(N), eye(N,N), Int[], Separation())
+    best_manifold = emptymanifold(N)
 
     for sep_dim in params.min_dim:params.max_dim
         separations = 0
