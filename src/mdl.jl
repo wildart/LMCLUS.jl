@@ -30,7 +30,7 @@ mvd_entropy(n, Σd) = n*(1+log(2π))/2 + (Σd == 0.0 ? 0.0 : log(Σd))
 function model_dl(M::Manifold, X::Matrix, P::Int)
     n = size(X,1) # space dimension
     m = indim(M)  # manifold dimension
-    return m == 0 ? P*n : P*(n + m*(n - (m+1)/2.))
+    return m == n ? P*n : P*(n + m*(n - (m+1)/2.))
 end
 
 # the description length of the dataset encoded with the provided mode: L(D|H)
