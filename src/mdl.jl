@@ -48,7 +48,7 @@ end
 
 # entropy of the orthoganal complement part of the data
 function entropy_dl{T<:FloatingPoint}(M::Manifold, X::Matrix{T}, dist::Symbol, É›::T)
-    n = size(X,1) # space dimension
+    n, l = size(X) # space dimension
     m = indim(M)  # manifold dimension
     Xtr = X .- mean(M)
 
@@ -62,7 +62,7 @@ function entropy_dl{T<:FloatingPoint}(M::Manifold, X::Matrix{T}, dist::Symbol, É
         E += mvd_entropy(m, det(Î£))
     elseif dist == :Empirical # for 0D manifold only empirical estimate is avalible
         F = svdfact(Xtr'/sqrt(n))
-        r = (m+1):n
+        r = (m+1):min(n,l)
         ri = 1:length(r)
         BC = F[:V][:,r]
         Y = BC'*Xtr
@@ -82,7 +82,7 @@ function entropy_dl{T<:FloatingPoint}(M::Manifold, X::Matrix{T}, dist::Symbol, É
         end
     elseif dist == :OptimalQuant
         F = svdfact(Xtr'/sqrt(n))
-        r = (m+1):n
+        r = (m+1):min(n,l)
         BC = F[:V][:,r]
         Y = BC'*Xtr
         Ymin = vec(minimum(Y, 2))
