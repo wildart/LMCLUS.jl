@@ -1,6 +1,3 @@
-import Base: show, dump, mean, copy, serialize, deserialize
-import MultivariateStats: indim, outdim, projection
-
 ## histogram separation type
 type Separation
     depth::Float64
@@ -17,7 +14,7 @@ Separation() = Separation(-Inf, eps(), Inf, -1, Float64[], UInt32[], UInt32[])
 criteria(sep::Separation) = sep.discriminability*sep.depth
 threshold(sep::Separation) = sep.threshold
 
-function show(io::IO, S::Separation)
+function Base.show(io::IO, S::Separation)
     print(io, "Separation($(criteria(S)), θ=$(threshold(S)))")
 end
 
@@ -36,14 +33,14 @@ indim(M::Manifold) = M.d
 outdim(M::Manifold) = length(M.points)
 labels(M::Manifold) = M.points
 separation(M::Manifold) = M.separation
-mean(M::Manifold) = M.μ
 projection(M::Manifold) = M.proj
-copy(M::Manifold) = Manifold(indim(M),mean(M),projection(M),labels(M),separation(M))
+Base.mean(M::Manifold) = M.μ
+Base.copy(M::Manifold) = Manifold(indim(M),mean(M),projection(M),labels(M),separation(M))
 
-function show(io::IO, M::Manifold)
+function Base.show(io::IO, M::Manifold)
     print(io, "Manifold (dim = $(indim(M)), size = $(outdim(M)))")
 end
-function dump(io::IO, M::Manifold)
+function Base.dump(io::IO, M::Manifold)
     show(io, M)
     println(io)
     println(io, "threshold (θ): $(threshold(separation(M))) ")
@@ -61,3 +58,20 @@ function assignments(Ms::Vector{Manifold})
     end
     return lbls
 end
+
+# function save(io::IO, m::Manifold)
+#     serialize(io, m.d)
+#     serialize(io, m.μ)
+#     serialize(io, m.proj)
+#     serialize(io, m.points)
+#     serialize(io, m.separation)
+# end
+
+# function load(io::IO)
+#     d = deserialize(io)
+#     μ = deserialize(io)
+#     proj = deserialize(io)
+#     points = deserialize(io)
+#     separation = deserialize(io)
+#     return Manifold(d, μ, proj, points, separation)
+# end

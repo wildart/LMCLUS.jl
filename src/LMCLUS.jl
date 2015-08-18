@@ -1,6 +1,6 @@
 module LMCLUS
 
-using MultivariateStats
+import MultivariateStats: MultivariateStats, PCA, fit, principalratio
 using Compat
 
 export  lmclus,
@@ -38,12 +38,7 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters, np::In
     mts = if np == 1
         [MersenneTwister(seed)]
     else
-        isdefined(:dSFMTjump) || try
-            eval(:(import dSFMTjump))
-        catch err
-            warn("Install `dSFMTjump` package for consistent PRNG performance in parallel mode")
-        end
-        isdefined(:dSFMTjump) ? dSFMTjump.jump(seed, np) : [MersenneTwister(seed+10*i) for i in 1:np]
+        isdefined(:randjump) ? randjump(MersenneTwister(seed), np) : [MersenneTwister(seed+10*i) for i in 1:np]
     end
     return lmclus(X, params, mts)
 end
@@ -80,18 +75,22 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T},
         # Perform basis alignment through PCA on found cluster
         if params.basis_alignment
             if indim(best_manifold) > 0 && !params.dim_adjustment
-                R = fit(PCA, X[:, labels(best_manifold)];
+                R = fit(PCA,
+                        X[:, labels(best_manifold)];
                         method=:svd,
                         maxoutdim=indim(best_manifold))
             else
-                R = fit(PCA, X[:, labels(best_manifold)];
+                R = fit(PCA,
+                        X[:, labels(best_manifold)];
                         method=:svd,
                         pratio = params.dim_adjustment_ratio > 0.0 ? params.dim_adjustment_ratio : 0.99)
             end
             pr = @sprintf("%.5f", principalratio(R))
             LOG(params, 3, "aligning manifold basis: $pr")
-            best_manifold = Manifold(outdim(R), mean(R), projection(R),
-                                    labels(best_manifold), separation(best_manifold))
+            best_manifold = Manifold(MultivariateStats.outdim(R),
+                                     MultivariateStats.mean(R),
+                                     MultivariateStats.projection(R),
+                                     labels(best_manifold), separation(best_manifold))
         end
 
         # Add a new manifold cluster to collection

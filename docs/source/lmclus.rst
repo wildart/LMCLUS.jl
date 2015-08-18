@@ -77,7 +77,7 @@ Example
     # Initialize clustering parameters with
     # maximum dimensionality for clusters.
     # I should be less then original space dimension.
-    params = LMCLUSParamaters(5)
+    params = LMCLUSParameters(5)
 
     # perform clustering
     Ms = lmclus(X, params)
