@@ -1,5 +1,6 @@
 addprocs(1)
 
+import LMCLUS
 @everywhere using LMCLUS
 using Base.Test
 
