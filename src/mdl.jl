@@ -12,6 +12,8 @@ quant_error(intervals, N_k_opt) = sum(univar(intervals./N_k_opt))
 function opt_quant{T<:FloatingPoint}(intervals::Vector{T}, ɛ::T; tot::Int = 10000, α::T = 0.5)
     C = 1.0
     i = 1
+    intervals[isnan(intervals)] = eps() # remove nans
+    intervals[isinf(intervals)] = 1 # remove nans
     N_k_opt = ones(length(intervals))
     err_opt = Inf
     while err_opt > ɛ && i < tot

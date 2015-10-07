@@ -62,4 +62,10 @@ module TestMDL
     bins, ɛ, c, itr = LMCLUS.opt_quant([1.], 1e-2)
     @test bins[1] == 3
     @test ɛ < 1e-2
+    bins, ɛ, c, itr = LMCLUS.opt_quant([Inf], 1e-2)
+    @test bins[1] == 3
+    @test ɛ < 1e-2
+    bins, ɛ, c, itr = LMCLUS.opt_quant([NaN], 1e-2)
+    @test bins[1] == 1
+    @test ɛ < 1e-2
 end
