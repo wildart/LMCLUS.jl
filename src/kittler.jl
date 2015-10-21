@@ -1,7 +1,7 @@
 # PERFORMS KITTLER'S MINIMAL THRESHOLDING ALGORITH
 # REFERENCES:   J. Kittler & J. Illingworth: "Minimum Error Thresholding"
 #                Pattern Recognition, Vol 19, nr 1. 1986, pp. 41-47.
-function kittler{T<:FloatingPoint}(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug = false)
+function kittler{T<:AbstractFloat}(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug = false)
     # find maximum and minimum
     maxX = maximum(xs)
     minX = minimum(xs)
@@ -16,7 +16,7 @@ function kittler{T<:FloatingPoint}(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug
     Separation(depth, discriminability, threshold, min_index, r, c, bi)
 end
 
-function kittler{T<:FloatingPoint}(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5, debug = false)
+function kittler{T<:AbstractFloat}(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5, debug = false)
     N = length(H)
 
     # calculate threshold
@@ -77,7 +77,7 @@ function kittler{T<:FloatingPoint}(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5, 
     depth, discriminability, threshold, min_index, J
 end
 
-function find_global_min{T<:FloatingPoint}(J::Vector{T}, tol)
+function find_global_min{T<:AbstractFloat}(J::Vector{T}, tol)
     N = length(J)
 
     # Mark minima

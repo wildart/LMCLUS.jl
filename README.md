@@ -11,6 +11,8 @@ A Julia package for linear manifold clustering.
 Pkg.clone("https://github.com/wildart/LMCLUS.jl.git")
 ```
 
+*Note:* Last version to support `julia 0.3` is `v0.0.2`.
+
 ## TODO
 - Zero-dimensional manifold search
 

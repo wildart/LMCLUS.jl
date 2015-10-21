@@ -1,7 +1,6 @@
 module LMCLUS
 
 import MultivariateStats: MultivariateStats, PCA, fit, principalratio
-using Compat
 
 export  lmclus,
         LMCLUSParameters, Diagnostic,
@@ -32,7 +31,7 @@ include("mdl.jl")
 #
 # Linear Manifold Clustering
 #
-function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters, np::Int=nprocs())
+function lmclus{T<:AbstractFloat}(X::Matrix{T}, params::LMCLUSParameters, np::Int=nprocs())
     # Setup RNG
     seed = getseed(params)
     mts = if np == 1
@@ -43,7 +42,7 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T}, params::LMCLUSParameters, np::In
     return lmclus(X, params, mts)
 end
 
-function lmclus{T<:FloatingPoint}(X::Matrix{T},
+function lmclus{T<:AbstractFloat}(X::Matrix{T},
                 params::LMCLUSParameters,
                 prngs::Vector{MersenneTwister})
 
@@ -118,7 +117,7 @@ function lmclus{T<:FloatingPoint}(X::Matrix{T},
 end
 
 # Find manifold in multiple dimensions
-function find_manifold{T<:FloatingPoint}(X::Matrix{T}, index::Array{Int,1},
+function find_manifold{T<:AbstractFloat}(X::Matrix{T}, index::Array{Int,1},
                                          params::LMCLUSParameters,
                                          prngs::Vector{MersenneTwister},
                                          found::Int=0)
@@ -217,7 +216,7 @@ end
 # 2- create distance histograms of the data points to each trial linear manifold
 # 3- of all the linear manifolds sampled select the one whose associated distance histogram
 #    shows the best separation between to modes.
-function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int,
+function find_best_separation{T<:AbstractFloat}(X::Matrix{T}, lm_dim::Int,
                               params::LMCLUSParameters,
                               prngs::Vector{MersenneTwister},
                               found::Int=0)
@@ -232,7 +231,7 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int,
     Q = sample_quantity( lm_dim, full_space_dim, data_size, params, found)
 
     # divide samples between PRNGs
-    samples_proc = @compat round(Int, Q / length(prngs))
+    samples_proc = round(Int, Q / length(prngs))
 
     arr = Array(RemoteRef, length(prngs))
     np = nprocs()
@@ -264,7 +263,7 @@ function find_best_separation{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int,
     return best_sep, best_origin, best_basis, Q
 end
 
-function sample_manifold{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int,
+function sample_manifold{T<:AbstractFloat}(X::Matrix{T}, lm_dim::Int,
                         params::LMCLUSParameters, prng::MersenneTwister, num_samples::Int)
     best_sep = Separation()
     best_origin = Float64[]
@@ -286,7 +285,7 @@ function sample_manifold{T<:FloatingPoint}(X::Matrix{T}, lm_dim::Int,
     return best_sep, best_origin, best_basis, prng
 end
 
-function calculate_separation{T<:FloatingPoint}(X::Matrix{T}, sample::Vector{Int}, params::LMCLUSParameters)
+function calculate_separation{T<:AbstractFloat}(X::Matrix{T}, sample::Vector{Int}, params::LMCLUSParameters)
     origin, basis = form_basis(X[:, sample])
     sep = try
         find_separation(X, origin, basis, params)
@@ -298,7 +297,7 @@ function calculate_separation{T<:FloatingPoint}(X::Matrix{T}, sample::Vector{Int
 end
 
 # Find separation criteria
-function find_separation{T<:FloatingPoint}(X::Matrix{T}, origin::Vector{T},
+function find_separation{T<:AbstractFloat}(X::Matrix{T}, origin::Vector{T},
                         basis::Matrix{T}, params::LMCLUSParameters)
     # Define sample for distance calculation
     if params.histogram_sampling
@@ -311,7 +310,7 @@ function find_separation{T<:FloatingPoint}(X::Matrix{T}, origin::Vector{T},
         p=( P<=Q ? P : Q )
         n2=(Z_01*Z_01)/(delta_mu*delta_mu*p)
         n3= ( n1 >= n2 ? n1 : n2 )
-        n4= @compat round(Int, n3)
+        n4= round(Int, n3)
         n= ( size(X, 2) <= n4 ? size(X, 2)-1 : n4 )
 
         LOG(params, 4, "find_separation: try to find $n samples")
@@ -345,13 +344,13 @@ function sample_quantity(k::Int, full_space_dim::Int, data_size::Int,
     LOG(params, 4, "number of samples by first heuristic=", N, ", by second heuristic=", data_size*params.sampling_factor)
 
     if params.sampling_heuristic == 1
-        num_samples = isinf(N) ? typemax(Int) : @compat round(Int, N)
+        num_samples = isinf(N) ? typemax(Int) : round(Int, N)
     elseif params.sampling_heuristic == 2
         NN = data_size*params.sampling_factor
-        num_samples = isinf(NN) ? typemax(Int) : @compat round(Int, NN)
+        num_samples = isinf(NN) ? typemax(Int) : round(Int, NN)
     elseif params.sampling_heuristic == 3
         NN = min(N, data_size*params.sampling_factor)
-        num_samples = isinf(NN) ? typemax(Int) : @compat round(Int, NN)
+        num_samples = isinf(NN) ? typemax(Int) : round(Int, NN)
     end
     num_samples = num_samples > 1 ? num_samples : 1
 
@@ -365,14 +364,14 @@ end
 # creating a basis matrix with one less vector than the number of sampled points.
 # Then perform orthogonalization through Gram-Schmidt process.
 # Note: Resulting basis is transposed.
-function form_basis{T<:FloatingPoint}(X::Matrix{T})
+function form_basis{T<:AbstractFloat}(X::Matrix{T})
     origin = X[:,1]
     basis = X[:,2:end] .- origin
     vec(origin), orthogonalize(basis)
 end
 
 # Modified Gram-Schmidt orthogonalization algorithm
-function orthogonalize{T<:FloatingPoint}(vecs::Matrix{T})
+function orthogonalize{T<:AbstractFloat}(vecs::Matrix{T})
     m, n = size(vecs)
     basis = zeros(m, n)
     for j = 1:n
@@ -388,7 +387,7 @@ function orthogonalize{T<:FloatingPoint}(vecs::Matrix{T})
     basis
 end
 
-function form_basis_svd{T<:FloatingPoint}(X::Matrix{T})
+function form_basis_svd{T<:AbstractFloat}(X::Matrix{T})
     n = size(X,1)
     origin = mean(X,2)
     vec(origin), svdfact((X.-origin)'/sqrt(n))[:V][:,1:end-1]
@@ -396,12 +395,12 @@ end
 
 # Calculate histogram size
 function hist_bin_size(xs::Vector, params::LMCLUSParameters)
-    return params.hist_bin_size == 0 ? (@compat round(Int, length(xs) * params.max_bin_portion)) : params.hist_bin_size
+    return params.hist_bin_size == 0 ? (round(Int, length(xs) * params.max_bin_portion)) : params.hist_bin_size
 end
 
 # Calculates distance from point to manifold defined by basis
 # Note: point should be translated wrt manifold origin
-function distance_to_manifold{T<:FloatingPoint}(point::Vector{T}, basis::Matrix{T})
+function distance_to_manifold{T<:AbstractFloat}(point::Vector{T}, basis::Matrix{T})
     d_n = 0.0
     d_v = basis' * point
     c = sumabs2(point)
@@ -420,11 +419,11 @@ function distance_to_manifold{T<:FloatingPoint}(point::Vector{T}, basis::Matrix{
     return d_n
 end
 
-distance_to_manifold{T<:FloatingPoint}(
+distance_to_manifold{T<:AbstractFloat}(
     point::Vector{T}, origin::Vector{T}, basis::Matrix{T}) = distance_to_manifold(point - origin, basis)
 
 # Determine the distance of each point in the dataset from to a linear manifold
-function distance_to_manifold{T<:FloatingPoint}(
+function distance_to_manifold{T<:AbstractFloat}(
     X::Matrix{T}, origin::Vector{T}, basis::Matrix{T})
 
     N, n = size(X)

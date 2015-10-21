@@ -1,7 +1,7 @@
 # OTSU THRESHOLDING ALGORITH
 # REFERENCES:   N. Otsu: "A threshold selection method from gray-level histograms"
 #               Automatica, 1975, 11, 285-296.
-function otsu{T<:FloatingPoint}(xs::Vector{T}; bins = 20, debug = false)
+function otsu{T<:AbstractFloat}(xs::Vector{T}; bins = 20, debug = false)
     # find maximum and minimum
     minX, maxX = extrema(xs)
 
@@ -14,7 +14,7 @@ function otsu{T<:FloatingPoint}(xs::Vector{T}; bins = 20, debug = false)
     Separation(varmax, 1., threshold, min_index, r, c)
 end
 
-function otsu{T<:FloatingPoint}(H::Vector{T}, hrange::Vector{Float64}; debug = false)
+function otsu{T<:AbstractFloat}(H::Vector{T}, hrange::Vector{Float64}; debug = false)
     N = length(H)
 
     hsum = sum((1:N).*H)

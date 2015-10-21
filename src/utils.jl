@@ -28,13 +28,13 @@ Sample randomly lm_dim+1 points from the dataset, making sure
 that the same point is not sampled twice. the function will return
 a index vector, specifying the index of the sampled points.
 """
-function sample_points{T<:FloatingPoint}(X::Matrix{T}, n::Int)
+function sample_points{T<:AbstractFloat}(X::Matrix{T}, n::Int)
     if n <= 0
         error("Sample size must be positive")
     end
     data_rows, data_cols = size(X)
     I = Int[]
-    hashes = Set{Uint}()
+    hashes = Set{UInt}()
     hashes_size = 0
 
     # get sample indexes
@@ -77,7 +77,7 @@ function sample_points{T<:FloatingPoint}(X::Matrix{T}, n::Int)
 end
 
 """Reservoir sampling"""
-function sample_points{T<:FloatingPoint}(X::Matrix{T}, k::Int, r::MersenneTwister)
+function sample_points{T<:AbstractFloat}(X::Matrix{T}, k::Int, r::MersenneTwister)
     N, n = size(X)
     if n < k
         warn("Not enough samples to construct manifold")
@@ -163,7 +163,7 @@ function V_measure(A::Matrix; β = 1.0)
     return V_β
 end
 
-function histogram3{T<:FloatingPoint}(V::Vector{T}, edgs)
+function histogram3{T<:AbstractFloat}(V::Vector{T}, edgs)
     VI = sortperm(V, alg=Base.Sort.MergeSort)
     counts = zeros(Int,length(edgs)-1)
     b = 1
@@ -178,7 +178,7 @@ function histogram3{T<:FloatingPoint}(V::Vector{T}, edgs)
     return edgs, counts, VI
 end
 
-function histogram2{T<:FloatingPoint}(V::Vector{T}, edgs)
+function histogram2{T<:AbstractFloat}(V::Vector{T}, edgs)
     n = length(edgs)-1
     counts = zeros(Int,n)
     cindex = zeros(Int,length(V))
@@ -195,7 +195,7 @@ function histogram2{T<:FloatingPoint}(V::Vector{T}, edgs)
     return edgs, counts, cindex
 end
 
-function histogram{T<:FloatingPoint}(V::Vector{T}, edgs)
+function histogram{T<:AbstractFloat}(V::Vector{T}, edgs)
     n = length(edgs)-1
     counts = zeros(Int32,n)
     cindex = zeros(UInt32,length(V))

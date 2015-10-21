@@ -1,15 +1,15 @@
 # Variance of a uniform distribution over interval
-univar{T<:FloatingPoint}(interval::Vector{T}) = (1//12)*(interval).^2
+univar{T<:AbstractFloat}(interval::Vector{T}) = (1//12)*(interval).^2
 
 # Optimal number of bins given constant C over interval
-opt_bins{T<:FloatingPoint}(intervals::Vector{T}, C::T) =
+opt_bins{T<:AbstractFloat}(intervals::Vector{T}, C::T) =
     round(Int, ceil(intervals * exp( (C - sum(intervals))/length(intervals) ), 0 ) )
 
 # Quantizing error
 quant_error(intervals, N_k_opt) = sum(univar(intervals./N_k_opt))
 
 # Optimal quantization of the interval
-function opt_quant{T<:FloatingPoint}(intervals::Vector{T}, ɛ::T; tot::Int = 10000, α::T = 0.5)
+function opt_quant{T<:AbstractFloat}(intervals::Vector{T}, ɛ::T; tot::Int = 10000, α::T = 0.5)
     C = 1.0
     i = 1
     intervals[isnan(intervals)] = eps() # remove nans
@@ -36,7 +36,7 @@ function model_dl(M::Manifold, X::Matrix, P::Int)
 end
 
 # the description length of the dataset encoded with the provided mode: L(D|H)
-function data_dl{T<:FloatingPoint}(M::Manifold, X::Matrix{T}, P::Int, dist::Symbol, ɛ::T)
+function data_dl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, P::Int, dist::Symbol, ɛ::T)
     D = 0.0
     if dist == :None
         D = P*length(X)
@@ -49,7 +49,7 @@ function data_dl{T<:FloatingPoint}(M::Manifold, X::Matrix{T}, P::Int, dist::Symb
 end
 
 # entropy of the orthoganal complement part of the data
-function entropy_dl{T<:FloatingPoint}(M::Manifold, X::Matrix{T}, dist::Symbol, ɛ::T)
+function entropy_dl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, dist::Symbol, ɛ::T)
     n, l = size(X) # space dimension
     m = indim(M)  # manifold dimension
     Xtr = X .- mean(M)
@@ -102,7 +102,7 @@ function entropy_dl{T<:FloatingPoint}(M::Manifold, X::Matrix{T}, dist::Symbol, �
     return E
 end
 
-function mdl{T<:FloatingPoint}(M::Manifold, X::Matrix{T};
+function mdl{T<:AbstractFloat}(M::Manifold, X::Matrix{T};
             Pm::Int = 32, Pd::Int=16, dist::Symbol = :Gaussian, ɛ::T = 1e-3)
     return model_dl(M, X, Pm) + data_dl(M, X, Pd, dist, ɛ)
 end
