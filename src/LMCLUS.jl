@@ -50,7 +50,7 @@ function lmclus{T<:AbstractFloat}(X::Matrix{T},
 
     N, n = size(X)
     index = collect(1:n)
-    cluster_number = 0
+    number_of_clusters = 0
     manifolds = Manifold[]
 
     # Check if manifold maximum dimension is less then full dimension
@@ -60,10 +60,10 @@ function lmclus{T<:AbstractFloat}(X::Matrix{T},
     end
 
     # Main loop through dataset
-    while length(index) > params.noise_size
+    while length(index) > params.min_cluster_size
         # Find one manifold
         best_manifold, remains = find_manifold(X, index, params, prngs, length(manifolds))
-        cluster_number += 1
+        number_of_clusters += 1
 
         # Perform dimensioality regression
         if params.zero_d_search && indim(best_manifold) == 1
@@ -94,7 +94,7 @@ function lmclus{T<:AbstractFloat}(X::Matrix{T},
 
         # Add a new manifold cluster to collection
         LOG(params, 2, @sprintf("found cluster # %d, size=%d, dim=%d",
-                cluster_number, length(labels(best_manifold)), indim(best_manifold)))
+                number_of_clusters, length(labels(best_manifold)), indim(best_manifold)))
         push!(manifolds, best_manifold)
 
         # Stop clustering if found specified number of clusters
@@ -160,8 +160,8 @@ function find_manifold{T<:AbstractFloat}(X::Matrix{T}, index::Array{Int,1},
             end
 
             # small amount of points is considered noise, try to bump dimension
-            if length(manifold_points) <= params.noise_size
-                LOG(params, 3, "noise: cluster size < ", params.noise_size," points")
+            if length(manifold_points) <= params.min_cluster_size
+                LOG(params, 3, "noise: cluster size < ", params.min_cluster_size," points")
                 break
             end
 
@@ -174,8 +174,8 @@ function find_manifold{T<:AbstractFloat}(X::Matrix{T}, index::Array{Int,1},
             separations += 1
         end
 
-        if length(selected) <= params.noise_size # no more points left - finish clustering
-            LOG(params, 3, "noise: dataset size < ", params.noise_size," points")
+        if length(selected) <= params.min_cluster_size # no more points left - finish clustering
+            LOG(params, 3, "noise: dataset size < ", params.min_cluster_size," points")
             break
         end
 
@@ -306,7 +306,7 @@ function find_separation{T<:AbstractFloat}(X::Matrix{T}, origin::Vector{T},
         Z_01=2.576  # Z random variable, confidence interval 0.99
         delta_p=0.2
         delta_mu=0.1
-        P=1.0/params.cluster_number
+        P=1.0/params.number_of_clusters
         Q=1-P
         n1=(Q/P)*((Z_01*Z_01)/(delta_p*delta_p))
         p=( P<=Q ? P : Q )
@@ -332,7 +332,7 @@ end
 function sample_quantity(k::Int, full_space_dim::Int, data_size::Int,
                          params::LMCLUSParameters, S_found::Int)
 
-    S_max = params.cluster_number
+    S_max = params.number_of_clusters
     if S_max <= 1
         return 1 # case where there is only one cluster
     end

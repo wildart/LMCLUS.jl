@@ -3,11 +3,11 @@ import Base.show
 type LMCLUSParameters
     min_dim::Int
     max_dim::Int
-    cluster_number::Int
+    number_of_clusters::Int
     stop_after_cluster::Int
     force_max_dim::Bool
     hist_bin_size::Int
-    noise_size::Int
+    min_cluster_size::Int
     best_bound::Float64
     error_bound::Float64
     max_bin_portion::Float64
@@ -29,11 +29,11 @@ type LMCLUSParameters
     LMCLUSParameters(max_dim) = new(
         1,        # min_dim
         max_dim,  # max_dim
-        10,       # cluster_number
+        10,       # number_of_clusters
         1000,     # stop_after_cluster
         false,    # force_max_dim
         0,        # hist_bin_size
-        20,       # noise_size
+        20,       # min_cluster_size
         1.0,      # best_bound
         0.0001,   # error_bound
         0.1,      # max_bin_portion
@@ -57,10 +57,10 @@ show(io::IO, p::LMCLUSParameters) =
     print(io, """Linear Manifold Clustering parameters:
     Min dimension (min_dim): $(p.min_dim)
     Max dimension (max_dim): $(p.max_dim)
-    Approximate number of clusters (cluster_number): $(p.cluster_number)
+    Nominal number of clusters (number_of_clusters): $(p.number_of_clusters)
     Stop searching after number for clusters found (stop_after_cluster): $(p.stop_after_cluster)
     Force algorithm to search in higher dimensions (force_max_dim): $(p.force_max_dim)
-    Noise size (noise_size): $(p.noise_size)
+    Minimum cluster size (min_cluster_size): $(p.min_cluster_size)
     Best bound (best_bound): $(p.best_bound)
     Error bound (error_bound): $(p.error_bound)
     Sample points for distance histogram (histogram_sampling): $(p.histogram_sampling)

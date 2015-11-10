@@ -6,9 +6,9 @@ module TestLMCLUS
 	p = LMCLUSParameters(3)
 
 	# Test sampling parameters
-	p.cluster_number = 1
+	p.number_of_clusters = 1
 	@test LMCLUS.sample_quantity(1,3,1000,p,1) == 1
-	p.cluster_number = 2
+	p.number_of_clusters = 2
 	p.sampling_heuristic = 1
 	@test LMCLUS.sample_quantity(1,3,1000,p,1) == 13
 	p.sampling_heuristic = 2
@@ -75,7 +75,7 @@ module TestLMCLUS
 
 	# Sampling
 	p.histogram_sampling = true
-	p.cluster_number = 3
+	p.number_of_clusters = 3
 	manifolds = lmclus(data,p)
 	@test length(manifolds) >= 3
 	p.histogram_sampling = false
