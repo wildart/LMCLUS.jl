@@ -7,9 +7,13 @@ julia:
   - nightly
 notifications:
   email: false
+matrix:
+  allow_failures:
+    - julia: nightly
 sudo: false
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia --check-bounds=yes -e 'Pkg.clone(pwd()); Pkg.test("LMCLUS"; coverage=true)'
+  - julia -e 'Pkg.clone(pwd())'
+  - julia -e 'Pkg.test("LMCLUS"; coverage=true)'
 after_success:
   - julia -e 'cd(Pkg.dir("LMCLUS")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
