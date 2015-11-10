@@ -22,6 +22,7 @@ module TestLMCLUS_Types
     @test mean(m) == [2., 2.]
     @test projection(m) == [2. 2.; 2. 2.]
     @test separation(m) == s
+    @test assignments([m]) == ones(3)
 
     io = IOBuffer()
     serialize(io, m)

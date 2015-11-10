@@ -163,38 +163,7 @@ function V_measure(A::Matrix; β = 1.0)
     return V_β
 end
 
-function histogram3{T<:AbstractFloat}(V::Vector{T}, edgs)
-    VI = sortperm(V, alg=Base.Sort.MergeSort)
-    counts = zeros(Int,length(edgs)-1)
-    b = 1
-    nb = b+1
-    for i in 1:length(V)
-        if V[VI[i]] > edgs[nb]
-            b += 1
-            nb = b+1
-        end
-        counts[b] += 1
-    end
-    return edgs, counts, VI
-end
-
-function histogram2{T<:AbstractFloat}(V::Vector{T}, edgs)
-    n = length(edgs)-1
-    counts = zeros(Int,n)
-    cindex = zeros(Int,length(V))
-    @inbounds for i in 1:length(V)
-        x = V[i]
-        j = 1
-        while j <= n
-            edgs[j] > x && break
-            j+=1
-        end
-        counts[j-1] += 1
-        cindex[i] = j
-    end
-    return edgs, counts, cindex
-end
-
+"Fast histogram calculation"
 function histogram{T<:AbstractFloat}(V::Vector{T}, edgs)
     n = length(edgs)-1
     counts = zeros(Int32,n)
@@ -220,47 +189,11 @@ function histogram{T<:AbstractFloat}(V::Vector{T}, edgs)
     return edgs, counts, cindex
 end
 
-# r = linspace(0.,1.,51)
-# h1 = map(x -> begin
-#     srand(x)
-#     xs = rand(10000)
-#     tic()
-#     LMCLUS.histogram(xs, r)
-#     toq()
-# end, 1:1000)
-
-# r = linspace(0.,1.,51)
-# h2 = map(x -> begin
-#     srand(x)
-#     xs = rand(10000)
-#     tic()
-#     LMCLUS.histogram2(xs, r)
-#     toq()
-# end, 1:1000)
-
-# r = linspace(0.,1.,51)
-# h3 = map(x -> begin
-#     srand(x)
-#     xs = rand(10000)
-#     tic()
-#     LMCLUS.histogram3(xs, r)
-#     toq()
-# end, 1:1000)
-
-# r = linspace(0.,1.,51)
-# h4 = map(x -> begin
-#     srand(x)
-#     xs = rand(10000)
-#     tic()
-#     hist(xs, r)
-#     toq()
-# end, 1:1000)
-
-# htimes = hcat(h1,h2,h3,h4)
-# hcat([:mean, :std, :median, :min, :max],
-#     vcat(mean(htimes, 1),
-#          std(htimes, 1),
-#          median(htimes, 1),
-#          minimum(htimes, 1),
-#          maximum(htimes, 1))
-# )
+"Generate points-to-cluster assignments identifiers"
+function assignments(Ms::Vector{Manifold})
+    lbls = zeros(Int, sum(map(m->outdim(m), Ms)))
+    for (i,m) in enumerate(Ms)
+        lbls[labels(m)] = i
+    end
+    return lbls
+end
