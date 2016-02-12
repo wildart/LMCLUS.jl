@@ -103,7 +103,7 @@ function entropy_dl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, dist::Symbol, �
 end
 
 function mdl{T<:AbstractFloat}(M::Manifold, X::Matrix{T};
-            Pm::Int = 32, Pd::Int=16, dist::Symbol = :Gaussian, ɛ::T = 1e-3)
+            Pm::Int = 32, Pd::Int=16, dist::Symbol = :Empirical, ɛ::T = 1e-3)
     return model_dl(M, X, Pm) + data_dl(M, X, Pd, dist, ɛ)
 end
 

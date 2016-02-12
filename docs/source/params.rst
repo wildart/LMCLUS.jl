@@ -6,11 +6,11 @@ The clustering properties set in ``LMCLUSParameters`` instance, which is defined
     .. code-block:: julia
 
         type LMCLUSParameters
-            min_dim::Int                     # Min dimension
-            max_dim::Int                     # Max dimension
-            cluster_number::Int              # Number of clusters
-            hist_bin_size::Int               # Histogram bins
-            noise_size::Int                  # Noise size
+            min_dim::Int                     # Minimum cluster dimension
+            max_dim::Int                     # Maximum cluster dimension
+            number_of_clusters::Int          # Nominal number of resulting clusters
+            hist_bin_size::Int               # Fixed number of bins for the distance histogram.
+            min_cluster_size::Int            # Minimum cluster size
             best_bound::Float64              # Best bound
             error_bound::Float64             # Error bound
             max_bin_portion::Float64         # Maximum histogram bin size
@@ -18,13 +18,15 @@ The clustering properties set in ``LMCLUSParameters`` instance, which is defined
             sampling_heuristic::Int          # Sampling heuristic
             sampling_factor::Float64         # Sampling factor
             histogram_sampling::Bool         # Sample points for distance histogram
-            zero_d_search::Bool              # Enable 0D manifold search
+            zero_d_search::Bool              # Enable zero-dimensional manifold search
             basis_alignment::Bool            # Manifold cluster basis alignment
             dim_adjustment::Bool             # Manifold dimensionality adjustment
             dim_adjustment_ratio::Float64    # Ratio of manifold principal subspace variance
             mdl_heuristic::Bool              # Enable MDL heuristic
-            mdl_precision::Float64           # MDL encoding parameter
-            mdl_quant_error::Float64         # Quantization error
+            mdl_model_precision::Int         # MDL model precision encoding constant
+            mdl_data_precision::Int          # MDL data precision encoding constant
+            mdl_quant_error::Float64         # Quantization error of a bin size calculation
+            mdl_compres_ratio::Float64       # Cluster compression ration
             log_level::Int                   # Log level (0-5)
         end
 
@@ -38,7 +40,7 @@ min_dim               Low bound of a cluster manifold dimension.                
 max_dim               High bound of a cluster manifold dimension.
                       *It cannot be larger then a dimensionality of a dataset.*
 --------------------  ---------------------------------------------------------------  ---------------
-cluster_number        Expected number of clusters.                                     ``10``
+number_of_clusters    Expected number of clusters.                                     ``10``
                       *Requred for the sampling heuristics.*
 --------------------  ---------------------------------------------------------------  ---------------
 hist_bin_size         Number of bins for a distance histogram.                         ``0``
@@ -46,7 +48,7 @@ hist_bin_size         Number of bins for a distance histogram.                  
                       the distance histogram determined by parameter*
                       ``max_bin_portion``.
 --------------------  ---------------------------------------------------------------  ---------------
-noise_size            Minimum size of a collection of data points to be considered as  ``20``
+min_cluster_size      Minimum size of a collection of data points to be considered as  ``20``
                       a proper cluster.
 --------------------  ---------------------------------------------------------------  ---------------
 best_bound            Separation best bound value is used for evaluating a goodness    ``1.0``
@@ -91,7 +93,7 @@ basis_alignment       Turn of/off an alignment of a manifold cluster basis.     
                       aligned along the direction of the maximum variance
                       (by performing PCA).
 --------------------  ---------------------------------------------------------------  ---------------
-dim_adjustment        Turn of/off a linear manifold cluster dimensionality detection   ``false``
+dim_adjustment        Turn on/off a linear manifold cluster dimensionality detection   ``false``
                       by looking for portion of a variance associated with
                       principal components.
 --------------------  ---------------------------------------------------------------  ---------------
@@ -100,13 +102,17 @@ dim_adjustment_ratio  Ratio of manifold principal subspace variance.            
 mdl                   Turn on/off minimum description length heuristic for             ``false``
                       a complexity validation of a generated cluster.
 --------------------  ---------------------------------------------------------------  ---------------
-mdl_precision         Precision encoding value.                                        ``16``
+mdl_model_precision   MDL model precision encoding value.                              ``32``
+--------------------  ---------------------------------------------------------------  ---------------
+mdl_data_precision    MDL data precision encoding value.                               ``16``
 --------------------  ---------------------------------------------------------------  ---------------
 mdl_quant_error       Quantization error of a bin size calculation for a histogram     ``1e-4``
                       which used in determining entropy value of
                       the empirical distance distribution.
 --------------------  ---------------------------------------------------------------  ---------------
-log_level             Logging level (ranges from 0 to 5).                      ``0``
+mdl_compres_ratio     Compression threshold value for discarding candidate clusters.   ``1.05``
+--------------------  ---------------------------------------------------------------  ---------------
+log_level             Logging level (ranges from 0 to 5).                              ``0``
 ====================  ===============================================================  ===============
 
 Suggestions

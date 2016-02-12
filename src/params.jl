@@ -1,29 +1,54 @@
 import Base.show
 
+"LMCLUS algorithm parameters"
 type LMCLUSParameters
+    "Minimum dimension of the cluster"
     min_dim::Int
+    "Maximum dimension of the cluster"
     max_dim::Int
+    "Nominal number of resulting clusters"
     number_of_clusters::Int
+    "Terminate algorith upon founding specified number of clusters"
     stop_after_cluster::Int
+    "Force to search clusters in high subspaces"
     force_max_dim::Bool
+    "Fixed number of bins for the distance histogram"
     hist_bin_size::Int
+    "Minimum cluster size (or noise size) in order to prevent generation of small clusters"
     min_cluster_size::Int
+    "Separation best bound value is used for evaluating a goodness of separation characterized by a discriminability and a depth between modes of a distance histogram."
     best_bound::Float64
+    "Sampling error bound determines a minimal number of samples required to correctly identify a linear manifold cluster."
     error_bound::Float64
+    "Maximum histogram bin size"
     max_bin_portion::Float64
+    "RNG seed"
     random_seed::Int64
+    "Sampling heuristic (1-3)"
     sampling_heuristic::Int
+    "Sampling factor used in one of sampling heuristics"
     sampling_factor::Float64
+    "Enables a sampling for a distance histogram"
     histogram_sampling::Bool
+    "Enables zero-dimensional manifold search"
     zero_d_search::Bool
+    "Enables an alignment of a manifold cluster basis"
     basis_alignment::Bool
+    "Enables a linear manifold cluster dimensionality detection"
     dim_adjustment::Bool
+    "Ratio of manifold principal subspace variance"
     dim_adjustment_ratio::Float64
+    "Enables the minimum description length heuristic for a complexity validation of a generated cluster"
     mdl::Bool
+    "MDL model precision encoding constant"
     mdl_model_precision::Int
+    "MDL data precision encoding constant"
     mdl_data_precision::Int
+    "Quantization error of a bin size calculation"
     mdl_quant_error::Float64
+    "Compression threshold value for discarding candidate clusters"
     mdl_compres_ratio::Float64
+    "Log level (0-5)"
     log_level::Int
 
     LMCLUSParameters(max_dim) = new(

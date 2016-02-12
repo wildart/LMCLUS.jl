@@ -1,11 +1,11 @@
 
 Linear Manifold Clustering (LMCLUS)
-=============================================
+====================================
 
 Many clustering algorithms are based on the concept that a cluster has a a single center point.
 Clusters could be considered as groups of points compact around a linear manifold. A linear manifold of dimension 0 is a point. So clustering around a center point is a special case of linear manifold clustering.
 
-Linear manifold clustering (LMCLUS) identifies subsets of the data which are embedded in arbitrary oriented lower dimensional linear manifolds, not nessesaraly zero dimensional. Minimal subsets of points are repeatedly sampled to construct trial a linear manifold and isolete points around it based of the proximity of points to the found manifold. Using top-down aproach, the linear manifold clustering alogorithm iterativly partitions dataset and discovers clusters embedded into low-dimensioanl linear subspaces [#R1]_.
+Linear manifold clustering algorithm identifies subsets of the data which are embedded in arbitrary oriented lower dimensional linear manifolds, not nessesaraly zero dimensional. Minimal subsets of points are repeatedly sampled to construct trial a linear manifold and isolete points around it based of the proximity of points to the found manifold. Using top-down aproach, the linear manifold clustering alogorithm iterativly partitions dataset and discovers clusters embedded into low-dimensioanl linear subspaces [#R1]_.
 
 *LMCLUS.jl* is a Julia package for linear manifold clustering.
 

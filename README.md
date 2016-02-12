@@ -4,6 +4,7 @@ A Julia package for linear manifold clustering.
 
 [![Build Status](https://travis-ci.org/wildart/LMCLUS.jl.svg?branch=master)](https://travis-ci.org/wildart/LMCLUS.jl)
 [![Coverage Status](https://coveralls.io/repos/wildart/LMCLUS.jl/badge.png?branch=master)](https://coveralls.io/r/wildart/LMCLUS.jl)
+[![DOI](https://zenodo.org/badge/19164/wildart/LMCLUS.jl.svg)](https://zenodo.org/badge/latestdoi/19164/wildart/LMCLUS.jl)
 
 ## Installation
 
@@ -13,8 +14,9 @@ Pkg.clone("https://github.com/wildart/LMCLUS.jl.git")
 
 *Note:* Last version to support `julia 0.3` is `v0.0.2`.
 
-## TODO
-- Zero-dimensional manifold search
-
 ## Resources
 - **Documentation:** <http://lmclusjl.readthedocs.org/en/latest/index.html>
+- **Papers:**
+    - Haralick, R. & Harpaz, R. "Linear manifold clustering in high dimensional spaces by stochastic search", Pattern recognition, Elsevier, 2007, 40, 2672-2684, DOI:[10.1016/j.patcog.2007.01.020](http://dx.doi.org/10.1016/j.patcog.2007.01.020)
+    - "Inexact MDL for Linear Manifold Clusters", TBA
+
