@@ -1,7 +1,7 @@
 # PERFORMS KITTLER'S MINIMAL THRESHOLDING ALGORITH
 # REFERENCES:   J. Kittler & J. Illingworth: "Minimum Error Thresholding"
 #                Pattern Recognition, Vol 19, nr 1. 1986, pp. 41-47.
-function kittler{T<:AbstractFloat}(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug = false)
+function kittler{T<:AbstractFloat}(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug = false, stat=false)
     # find maximum and minimum
     maxX = maximum(xs)
     minX = minimum(xs)
@@ -13,7 +13,7 @@ function kittler{T<:AbstractFloat}(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug
     H = c/sum(c)
     depth, discriminability, threshold, min_index, criterion_func = kittler(H, minX, maxX, tol=tol, debug=debug)
     depth, discriminability, threshold, min_index, r, c
-    Separation(depth, discriminability, threshold, min_index, r, c, bi)
+    Separation(depth, discriminability, threshold, min_index, r, c, (stat ? bi : UInt32[]))
 end
 
 function kittler{T<:AbstractFloat}(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5, debug = false)

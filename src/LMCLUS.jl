@@ -322,7 +322,7 @@ function find_separation{T<:AbstractFloat}(X::Matrix{T}, origin::Vector{T},
     distances = distance_to_manifold(params.histogram_sampling ? X[:,sampleIndex] : X , origin, basis)
     # Define histogram size
     bins = hist_bin_size(distances, params)
-    return kittler(distances, bins=bins)
+    return kittler(distances, bins=bins, stat=params.ptb_stat)
 end
 
 # Determine the number of times to sample the data in order to guaranty

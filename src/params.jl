@@ -50,6 +50,8 @@ type LMCLUSParameters
     mdl_compres_ratio::Float64
     "Log level (0-5)"
     log_level::Int
+    "Enables point-to-bin assignment statistics"
+    ptb_stat::Bool
 
     LMCLUSParameters(max_dim) = new(
         1,        # min_dim
@@ -75,7 +77,9 @@ type LMCLUSParameters
         16,       # mdl_data_precision
         0.0001,   # mdl_quant_error
         1.05,     # mdl_compres_ratio
-        0)        # log_level
+        0,        # log_level
+        false     #ptb_stat
+    )
 end
 
 show(io::IO, p::LMCLUSParameters) =
