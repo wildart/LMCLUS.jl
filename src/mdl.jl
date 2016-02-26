@@ -9,18 +9,35 @@ opt_bins{T<:AbstractFloat}(intervals::Vector{T}, C::T) =
 quant_error(intervals, N_k_opt) = sum(univar(intervals./N_k_opt))
 
 # Optimal quantization of the interval
-function opt_quant{T<:AbstractFloat}(intervals::Vector{T}, ɛ::T; tot::Int = 10000, α::T = 0.5)
-    C = 1.0
-    i = 1
+function opt_quant{T<:AbstractFloat}(intervals::Vector{T}, ɛ::T; tot::Int = 1000, tol=1e-6)
+    # Clear interval values
     intervals[isnan(intervals)] = eps() # remove nans
     intervals[isinf(intervals)] = 1 # remove nans
-    N_k_opt = ones(length(intervals))
+
+    # Setup C bounds
+    K = length(intervals)
+    C = 0.
+    Cmin = 0.
+    Cmax = K*log(typemax(Int)./intervals)+sum(log(intervals)) |> minimum
+
+    i = 1
+    N_k_opt = ones(Int, K)
     err_opt = Inf
-    while err_opt > ɛ && i < tot
-        C += α
-        i += 1
+    while i < tot
+        C = Cmax - (Cmax - Cmin)/2.
         N_k_opt = opt_bins(intervals, C)
         err_opt = quant_error(intervals, N_k_opt)
+        err_diff = err_opt - ɛ^2
+        if abs(err_diff) < tol
+            break # error is small enough to stop search
+        elseif err_diff > 0.
+            # error is too big
+            Cmin = C
+        elseif err_diff < 0.
+            # error is too small
+            Cmax = C
+        end
+        i += 1
     end
     return N_k_opt, err_opt, C, i
 end
@@ -32,7 +49,7 @@ mvd_entropy(n, Σd) = n*(1+log(2π))/2 + (Σd == 0.0 ? 0.0 : log(Σd))
 function model_dl(M::Manifold, X::Matrix, P::Int)
     n = size(X,1) # space dimension
     m = indim(M)  # manifold dimension
-    return m == n ? P*n : P*(n + m*(n - (m+1)/2.))
+    return m == n ? P*n : round(Int, P*(n + m*(n - (m+1)/2.)))
 end
 
 # the description length of the dataset encoded with the provided mode: L(D|H)
@@ -45,7 +62,7 @@ function data_dl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, P::Int, dist::Symb
     else
         D = (P*indim(M) + entropy_dl(M, X, dist, ɛ))*outdim(M)
     end
-    return D
+    return round(Int, ceil(D))
 end
 
 # entropy of the orthoganal complement part of the data
@@ -103,7 +120,7 @@ function entropy_dl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, dist::Symbol, �
 end
 
 function mdl{T<:AbstractFloat}(M::Manifold, X::Matrix{T};
-            Pm::Int = 32, Pd::Int=16, dist::Symbol = :Empirical, ɛ::T = 1e-3)
+            Pm::Int = 32, Pd::Int=16, dist::Symbol = :OptimalQuant, ɛ::T = 1e-2)
     return model_dl(M, X, Pm) + data_dl(M, X, Pd, dist, ɛ)
 end
 

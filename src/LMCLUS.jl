@@ -233,7 +233,7 @@ function find_best_separation{T<:AbstractFloat}(X::Matrix{T}, lm_dim::Int,
     # divide samples between PRNGs
     samples_proc = round(Int, Q / length(prngs))
 
-    gc_enable(false)
+    # gc_enable(false)
     arr = Array(RemoteRef, length(prngs))
     np = nprocs()
     for i in 1:length(prngs)
@@ -253,7 +253,7 @@ function find_best_separation{T<:AbstractFloat}(X::Matrix{T}, lm_dim::Int,
         end
         prngs[i] = mt
     end
-    gc_enable(true)
+    # gc_enable(true)
 
     cr = criteria(best_sep)
     if cr <= 0.

@@ -78,7 +78,7 @@ type LMCLUSParameters
         0.0001,   # mdl_quant_error
         1.05,     # mdl_compres_ratio
         0,        # log_level
-        false     #ptb_stat
+        false     # ptb_stat
     )
 end
 

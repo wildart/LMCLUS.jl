@@ -47,23 +47,23 @@ module TestMDL
 
     srand(923487298)
     Xg, Mg = generate_lm(N, M, C, B, bounds, θ, :Gausian; σs = σs)
-    @test_approx_eq_eps LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Uniform)   1740 1
-    @test_approx_eq_eps LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Gaussian)  1838 1
-    @test_approx_eq_eps LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Empirical, ɛ = 1e-4) 2188 1 # quantization
-    @test_approx_eq_eps LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Empirical, ɛ = 20.0) 2115 1 # bin # fixed
-    @test_approx_eq_eps LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:OptimalQuant, ɛ = 1e-4) 2345 1 # optimal quantizing
+    @test LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Uniform)  == 1741
+    @test LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Gaussian) == 1838
+    @test LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Empirical, ɛ = 1e-2) == 2162 # quantization
+    @test LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Empirical, ɛ = 20.0) == 2116 # bin # fixed
+    @test LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:OptimalQuant, ɛ = 1e-2) == 2324  # optimal quantizing
     Mg.d = 0
-    @test_approx_eq     LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:None)      3264
-    @test_approx_eq_eps LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Center)    169  1
+    @test LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:None)   == 3264
+    @test LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Center) == 170
 
     # Quantization
     @test_approx_eq LMCLUS.univar([1.]) [1./12.]
     @test_approx_eq LMCLUS.opt_bins([1.], 1.) 1.
     bins, ɛ, c, itr = LMCLUS.opt_quant([1.], 1e-2)
-    @test bins[1] == 3
+    @test bins[1] == 29
     @test ɛ < 1e-2
     bins, ɛ, c, itr = LMCLUS.opt_quant([Inf], 1e-2)
-    @test bins[1] == 3
+    @test bins[1] == 29
     @test ɛ < 1e-2
     bins, ɛ, c, itr = LMCLUS.opt_quant([NaN], 1e-2)
     @test bins[1] == 1
