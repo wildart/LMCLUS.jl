@@ -75,7 +75,7 @@ type LMCLUSParameters
         false,    # mdl
         32,       # mdl_model_precision
         16,       # mdl_data_precision
-        0.0001,   # mdl_quant_error
+        0.001,    # mdl_quant_error
         1.05,     # mdl_compres_ratio
         0,        # log_level
         false     # ptb_stat
