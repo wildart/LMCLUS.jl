@@ -375,7 +375,7 @@ end
 # Modified Gram-Schmidt orthogonalization algorithm
 function orthogonalize{T<:AbstractFloat}(vecs::Matrix{T})
     m, n = size(vecs)
-    basis = zeros(m, n)
+    basis = zeros(T, m, n)
     for j = 1:n
         v_j = vecs[:,j]
         for i = 1:(j-1)

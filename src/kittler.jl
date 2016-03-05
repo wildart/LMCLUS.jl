@@ -10,7 +10,7 @@ function kittler{T<:AbstractFloat}(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug
     r = linspace(minX,maxX,bins+1)
     #r, c = hist(xs, r)
     r, c, bi = histogram(xs, r)
-    H = c/sum(c)
+    H = convert(Vector{T}, c/sum(c))
     depth, discriminability, threshold, min_index, criterion_func = kittler(H, minX, maxX, tol=tol, debug=debug)
     depth, discriminability, threshold, min_index, r, c
     Separation(depth, discriminability, threshold, min_index, r, c, (stat ? bi : UInt32[]))
