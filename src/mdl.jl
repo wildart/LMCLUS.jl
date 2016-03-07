@@ -107,7 +107,7 @@ function entropy_dl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, dist::Symbol, �
         Ymin = vec(minimum(Y, 2))
         Ymax = vec(maximum(Y, 2))
         intervals = abs(Ymax - Ymin)
-        bins, sqerr, C = opt_quant(intervals/maximum(intervals), ɛ)
+        bins, sqerr, C = opt_quant(intervals, ɛ)
         E = C/log(2)
     elseif dist == :Center
         for i in 1:outdim(M)
