@@ -51,7 +51,7 @@ module TestMDL
     @test LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Gaussian) == 1838
     @test LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Empirical, ɛ = 1e-2) == 2162 # quantization
     @test LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Empirical, ɛ = 20.0) == 2116 # bin # fixed
-    @test LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:OptimalQuant, ɛ = 1e-2) == 2324  # optimal quantizing
+    @test LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:OptimalQuant, ɛ = 1e-2) == 2422  # optimal quantizing
     Mg.d = 0
     @test LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:None)   == 3264
     @test LMCLUS.mdl(Mg, Xg, Pm = Pm, Pd = Pd, dist=:Center) == 170
