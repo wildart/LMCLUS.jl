@@ -22,7 +22,7 @@ The clustering properties set in ``LMCLUSParameters`` instance, which is defined
             basis_alignment::Bool            # Manifold cluster basis alignment
             dim_adjustment::Bool             # Manifold dimensionality adjustment
             dim_adjustment_ratio::Float64    # Ratio of manifold principal subspace variance
-            mdl_heuristic::Bool              # Enable MDL heuristic
+            mdl::Bool                        # Enable MDL heuristic
             mdl_model_precision::Int         # MDL model precision encoding constant
             mdl_data_precision::Int          # MDL data precision encoding constant
             mdl_quant_error::Float64         # Quantization error of a bin size calculation
