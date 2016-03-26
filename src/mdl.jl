@@ -53,20 +53,22 @@ function model_dl(M::Manifold, X::Matrix, P::Int)
 end
 
 # the description length of the dataset encoded with the provided mode: L(D|H)
-function data_dl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, P::Int, dist::Symbol, ɛ::T)
+function data_dl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, P::Int, dist::Symbol, ɛ::T;
+                                   tot::Int = 1000, tol=1e-6)
     D = 0.0
     if dist == :None
         D = P*length(X)
     elseif dist == :Center
-        D = entropy_dl(M, X, dist, ɛ)
+        D = entropy_dl(M, X, dist, ɛ, tot=tot, tol=tol)
     else
-        D = (P*indim(M) + entropy_dl(M, X, dist, ɛ))*outdim(M)
+        D = (P*indim(M) + entropy_dl(M, X, dist, ɛ, tot=tot, tol=tol))*outdim(M)
     end
     return round(Int, ceil(D))
 end
 
 # entropy of the orthoganal complement part of the data
-function entropy_dl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, dist::Symbol, ɛ::T)
+function entropy_dl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, dist::Symbol, ɛ::T;
+                                      tot::Int = 1000, tol=1e-6)
     n, l = size(X) # space dimension
     m = indim(M)  # manifold dimension
     Xtr = X .- mean(M)
@@ -107,7 +109,7 @@ function entropy_dl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, dist::Symbol, �
         Ymin = vec(minimum(Y, 2))
         Ymax = vec(maximum(Y, 2))
         intervals = abs(Ymax - Ymin)
-        bins, sqerr, C = opt_quant(intervals, ɛ)
+        bins, sqerr, C = opt_quant(intervals, ɛ, tot=tot, tol=tol)
         E = C/log(2)
     elseif dist == :Center
         for i in 1:outdim(M)
@@ -120,8 +122,9 @@ function entropy_dl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, dist::Symbol, �
 end
 
 function mdl{T<:AbstractFloat}(M::Manifold, X::Matrix{T};
-            Pm::Int = 32, Pd::Int=16, dist::Symbol = :OptimalQuant, ɛ::T = 1e-2)
-    return model_dl(M, X, Pm) + data_dl(M, X, Pd, dist, ɛ)
+            Pm::Int = 32, Pd::Int=16, dist::Symbol = :OptimalQuant, ɛ::T = 1e-2,
+            tot::Int = 1000, tol=1e-6)
+    return model_dl(M, X, Pm) + data_dl(M, X, Pd, dist, ɛ, tot=tot, tol=tol)
 end
 
 function raw(M::Manifold, Pm::Int)
