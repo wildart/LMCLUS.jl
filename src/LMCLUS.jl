@@ -432,20 +432,20 @@ function distance_to_manifold{T<:AbstractFloat}(
     M = size(basis,2)
     # vector to hold distances of points from basis
     distances = zeros(T, n)
-    tran = copy(X)
-    @simd for i in 1:n
-        for j in 1:N
-            @inbounds tran[j,i] -= origin[j]
-            @inbounds distances[i] += tran[j,i]*tran[j,i]
+    tran = similar(X)
+    @fastmath @inbounds for i in 1:n
+        @simd for j in 1:N
+            tran[j,i] = X[j,i] - origin[j]
+            distances[i] += tran[j,i]*tran[j,i]
         end
     end
     proj = At_mul_B(basis,tran)
-    @simd for i in 1:n
+    @fastmath @inbounds for i in 1:n
         b = 0.0
-        for j in 1:M
-            @inbounds b += proj[j,i]*proj[j,i]
+        @simd for j in 1:M
+            b += proj[j,i]*proj[j,i]
         end
-        @inbounds distances[i] = sqrt(abs(distances[i]-b))
+        distances[i] = sqrt(abs(distances[i]-b))
     end
     return distances
 end
