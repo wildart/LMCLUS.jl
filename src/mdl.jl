@@ -2,15 +2,24 @@
 univar{T<:AbstractFloat}(interval::Vector{T}) = (1//12)*(interval).^2
 
 # Optimal number of bins given constant C over interval
-opt_bins{T<:AbstractFloat}(intervals::Vector{T}, C::T) =
-    round(Int, ceil(intervals * exp( (C - sum(intervals))/length(intervals) ), 0 ) )
+function opt_bins{T<:AbstractFloat}(intervals::Vector{T}, C::T)
+    ns = ceil(intervals * exp( (C - sum(intervals))/length(intervals) ), 0 )
+    nsi = zeros(UInt, size(ns))
+    for i in 1:length(nsi)
+        nsi[i] = if ns[i] >= typemax(UInt)
+            typemax(UInt)
+        else
+            round(UInt, ns[i])
+        end
+    end
+    return nsi
+end
 
 # Quantizing error
 quant_error(intervals, N_k_opt) = sum(univar(intervals./N_k_opt))
 
 # Optimal quantization of the interval
 function opt_quant{T<:AbstractFloat}(intervals::Vector{T}, ɛ::T; tot::Int = 1000, tol=1e-6)
-    # Clear interval values
     intervals[isnan(intervals)] = eps() # remove nans
     intervals[isinf(intervals)] = 1 # remove nans
 
@@ -18,10 +27,10 @@ function opt_quant{T<:AbstractFloat}(intervals::Vector{T}, ɛ::T; tot::Int = 100
     K = length(intervals)
     C = 0.
     Cmin = 0.
-    Cmax = K*log(typemax(Int)./intervals)+sum(log(intervals)) |> minimum
+    Cmax = K*log(typemax(UInt)./intervals)+sum(log(intervals)) |> minimum
 
     i = 1
-    N_k_opt = ones(Int, K)
+    N_k_opt = ones(UInt, K)
     err_opt = Inf
     while i < tot
         C = Cmax - (Cmax - Cmin)/2.
