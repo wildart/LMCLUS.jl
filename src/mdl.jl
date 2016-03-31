@@ -21,7 +21,8 @@ quant_error(intervals, N_k_opt) = sum(univar(intervals./N_k_opt))
 # Optimal quantization of the interval
 function opt_quant{T<:AbstractFloat}(intervals::Vector{T}, ɛ::T; tot::Int = 1000, tol=1e-6)
     intervals[isnan(intervals)] = eps() # remove nans
-    intervals[isinf(intervals)] = 1 # remove nans
+    intervals[intervals .< eps()] = eps() # remove 0s
+    intervals[isinf(intervals)] = 1. # remove inf
 
     # Setup C bounds
     K = length(intervals)
