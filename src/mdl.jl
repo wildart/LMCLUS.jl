@@ -133,7 +133,7 @@ end
 
 function mdl{T<:AbstractFloat}(M::Manifold, X::Matrix{T};
             Pm::Int = 32, Pd::Int=16, dist::Symbol = :OptimalQuant, ɛ::T = 1e-2,
-            tot::Int = 1000, tol=1e-6)
+            tot::Int = 1000, tol=1e-8)
     return model_dl(M, X, Pm) + data_dl(M, X, Pd, dist, ɛ, tot=tot, tol=tol)
 end
 
