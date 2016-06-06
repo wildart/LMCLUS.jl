@@ -51,7 +51,7 @@ module TestLMCLUS
 	p.random_seed = 4572489057
 	println(p) # test show()
 
-	testDataFile = joinpath("/",split(string(lmclus.env.defs.func.code.file),'/')[1:end-2]...,"test","testData")
+	testDataFile = joinpath(splitdir(string(lmclus.env.defs.func.code.file))[1],"..","test","testData")
 	ds = readdlm(testDataFile, ',')
 	data = ds[:,1:end-1]'
 
@@ -68,8 +68,8 @@ module TestLMCLUS
 	print("Comparing indexes of manifolds: ")
 	for (i,j) in combinations(1:length(manifolds),2)
 		print("($(i), $(j))")
-		@test length(symdiff(manifolds[i].points, manifolds[j].points)) ==
-				length(manifolds[i].points) + length(manifolds[j].points)
+		@test length(symdiff(labels(manifolds[i]), labels(manifolds[j]))) ==
+				length(labels(manifolds[i])) + length(labels(manifolds[j]))
 	end
 	println()
 

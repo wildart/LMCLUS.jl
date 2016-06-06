@@ -131,10 +131,14 @@ function entropy_dl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, dist::Symbol, �
     return E
 end
 
-function mdl{T<:AbstractFloat}(M::Manifold, X::Matrix{T};
-            Pm::Int = 32, Pd::Int=16, dist::Symbol = :OptimalQuant, ɛ::T = 1e-2,
-            tot::Int = 1000, tol=1e-8)
+function mdl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, Pm::Int, Pd::Int;
+             dist::Symbol = :OptimalQuant, ɛ::T=1e-2, tot::Int = 1000, tol=1e-8)
     return model_dl(M, X, Pm) + data_dl(M, X, Pd, dist, ɛ, tot=tot, tol=tol)
+end
+
+function mdl{T<:AbstractFloat}(Ms::Vector{Manifold}, X::Matrix{T}, Pm::Int, Pd::Int;
+            dist::Symbol = :OptimalQuant, ɛ::T=1e-2, tot::Int = 1000, tol=1e-8)
+    return sum([mdl(m,X,Pm,Pd,dist=dist,ɛ=ɛ,tot=tot,tol=tol) for m in Ms])
 end
 
 function raw(M::Manifold, Pm::Int)

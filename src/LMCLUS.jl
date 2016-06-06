@@ -181,11 +181,9 @@ function find_manifold{T<:AbstractFloat}(X::Matrix{T}, index::Array{Int,1},
 
         # check compression ratio
         if params.mdl && indim(best_manifold) > 0 && separations > 0
-            mmdl = mdl(best_manifold, X[:, selected];
-                        Pm = params.mdl_model_precision,
-                        Pd = params.mdl_data_precision,
-                        dist = :OptimalQuant, #Empirical
-                        ɛ = params.mdl_quant_error)
+            mmdl = mdl(best_manifold, X[:, selected],
+                       params.mdl_model_precision, params.mdl_data_precision,
+                       ɛ = params.mdl_quant_error, dist = :OptimalQuant) #Empirical
             mraw = raw(best_manifold, params.mdl_data_precision)
             cratio = mraw/mmdl
             LOG(params, 4, "MDL: $mmdl, RAW: $mraw, COMPRESS: $cratio")
