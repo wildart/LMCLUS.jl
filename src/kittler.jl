@@ -59,9 +59,9 @@ function kittler{T<:AbstractFloat}(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5, 
 
     # Compute criterion function
     J = fill(-Inf, N-1)
-    for T=1:(N-1)
-        if P1[T]!=0 && P2[T]!=0
-            J[T] = 1 + 2*(P1[T]*log(sqrt(Var1[T])) + P2[T]*log(sqrt(Var2[T]))) - 2*(P1[T]*log(P1[T]) + P2[T]*log(P2[T]))
+    for t=1:(N-1)
+        if P1[t]!=0 && P2[t]!=0
+            J[t] = 1 + 2*(P1[t]*log(sqrt(Var1[t])) + P2[t]*log(sqrt(Var2[t]))) - 2*(P1[t]*log(P1[t]) + P2[t]*log(P2[t]))
         end
     end
     debug && println("H: $(H)")
