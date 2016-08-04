@@ -12,7 +12,12 @@ A Julia package for linear manifold clustering.
 Pkg.clone("https://github.com/wildart/LMCLUS.jl.git")
 ```
 
-*Note:* Last version to support `julia 0.3` is `v0.0.2`.
+### Julia Compatibility
+| Julia Version | LMCLUS version |
+|---------------|----------------|
+|v0.3.*|≤ v0.0.2|
+|v0.4.*|≤ v0.1.2|
+|v0.5.*|≤ v0.2.0|
 
 ## Resources
 - **Documentation:** <http://lmclusjl.readthedocs.org/en/latest/index.html>
