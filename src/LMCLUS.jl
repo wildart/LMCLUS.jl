@@ -109,7 +109,7 @@ function lmclus{T<:AbstractFloat}(X::Matrix{T},
     # Rest of the points considered as noise
     if length(index) > 0
         LOG(params, 2, "outliers: $(length(index)), 0D cluster formed")
-        em = emptymanifold(N, index)
+        em = emptymanifold(0, index)
         push!(manifolds, em)
     end
 
@@ -181,10 +181,13 @@ function find_manifold{T<:AbstractFloat}(X::Matrix{T}, index::Array{Int,1},
 
         # check compression ratio
         if params.mdl && indim(best_manifold) > 0 && separations > 0
-            mmdl = mdl(best_manifold, X[:, selected],
-                       params.mdl_model_precision, params.mdl_data_precision,
-                       ɛ = params.mdl_quant_error, dist = :OptimalQuant) #Empirical
-            mraw = raw(best_manifold, params.mdl_data_precision)
+            BM = best_manifold
+            BMdata = X[:, selected]
+            Pm = params.mdl_model_precision
+            Pd = params.mdl_data_precision
+            mmdl = MDL.calculate(MDL.OptimalQuant, BM, BMdata, Pm, Pd, ɛ = params.mdl_quant_error)
+            mraw = MDL.calculate(MDL.Raw, BM, BMdata, Pm, Pd)
+
             cratio = mraw/mmdl
             LOG(params, 4, "MDL: $mmdl, RAW: $mraw, COMPRESS: $cratio")
             if cratio < params.mdl_compres_ratio
@@ -204,6 +207,7 @@ function find_manifold{T<:AbstractFloat}(X::Matrix{T}, index::Array{Int,1},
             best_manifold.points = selected
         end
         LOG(params, 3, "no linear manifolds found in data, noise cluster formed")
+        best_manifold.d = 0
     end
 
     best_manifold, filtered
@@ -232,15 +236,16 @@ function find_best_separation{T<:AbstractFloat}(X::Matrix{T}, lm_dim::Int,
     samples_proc = round(Int, Q / length(prngs))
 
     # gc_enable(false)
-    arr = Array(RemoteRef, length(prngs))
+    arr = Array(Future, length(prngs))
     np = nprocs()
     for i in 1:length(prngs)
-        arr[i] = remotecall((i%np)+1, sample_manifold, X, lm_dim+1, params, prngs[i], samples_proc)
+        pid = (i%np)+1
+        arr[i] = remotecall(sample_manifold, pid, X, lm_dim+1, params, prngs[i], samples_proc)
     end
 
     # Reduce values of manifolds from remote sources
     best_sep = Separation()
-    best_origin = Float64[]
+    best_origin = T[]
     best_basis = zeros(0, 0)
     for (i, rr) in enumerate(arr)
         sep, origin, basis, mt = fetch(rr)
@@ -266,7 +271,7 @@ end
 function sample_manifold{T<:AbstractFloat}(X::Matrix{T}, lm_dim::Int,
                         params::LMCLUSParameters, prng::MersenneTwister, num_samples::Int)
     best_sep = Separation()
-    best_origin = Float64[]
+    best_origin = T[]
     best_basis = zeros(0, 0)
 
     for i in 1:num_samples
