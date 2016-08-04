@@ -1,7 +1,8 @@
-module TestKittler
-	using LMCLUS
-	using Distributions
-	using Base.Test
+using LMCLUS
+using Distributions
+using Base.Test
+
+@testset "Thresholding" begin
 
 	N = 5000
 	bins = 100
@@ -13,24 +14,25 @@ module TestKittler
 
 	# Test 1
 	res = kittler(generate_sample(N, 50, 15, 150, 15), bins=bins)
-	println("Threshold: ", threshold(res))#, " (",res[5],")")
+	# println("Threshold: ", threshold(res))#, " (",res[5],")")
 	@test_approx_eq_eps threshold(res) 102.0 5
 
 	# Test 2
 	res = kittler(generate_sample(N, 38, 9, 121, 44), bins=bins)
-	println("Threshold: ", threshold(res))#, " (",res[5],")")
+	# println("Threshold: ", threshold(res))#, " (",res[5],")")
 	@test_approx_eq_eps threshold(res) 65.0 5
 
 	# Test 3
 	res = kittler(generate_sample(N, 47, 13, 144, 25), bins=bins)
-	println("Threshold: ", threshold(res))#, " (",res[5],")")
+	# println("Threshold: ", threshold(res))#, " (",res[5],")")
 	@test_approx_eq_eps threshold(res) 85.0 5
 
 	# Test 4
 	res = kittler(generate_sample(N, 50, 4, 150, 30), bins=bins)
-	println("Threshold: ", threshold(res))#, " (",res[5],")")
+	# println("Threshold: ", threshold(res))#, " (",res[5],")")
 	@test_approx_eq_eps threshold(res) 64.0 5
 
 	# Try unimodal histogram
 	@test_throws ErrorException kittler(rand(Normal(1, 10), N), bins=10)
+
 end

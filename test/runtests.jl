@@ -1,8 +1,14 @@
-my_tests = ["types_test.jl", "kittler_test.jl", "lmclus_test.jl", "lmclus_p_test.jl", "mdl_test.jl"]
+my_tests = [
+    "types_test.jl",
+    "kittler_test.jl",
+    "lmclus_test.jl",
+    "lmclus_p_test.jl",
+    "mdl_test.jl"
+]
 
-println("Running tests:")
+# println("Running tests:")
 
 for my_test in my_tests
-    println(" * $(my_test)")
+    # println(" * $(my_test)")
     include(my_test)
 end

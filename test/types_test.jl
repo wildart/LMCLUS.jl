@@ -1,6 +1,7 @@
-module TestLMCLUS_Types
-    using LMCLUS
-    using Base.Test
+using Base.Test
+using LMCLUS
+
+@testset "LMCLUS Types" begin
 
     s = Separation(10., 10., 10., 10, [10.], [10], [10])
     io = IOBuffer()

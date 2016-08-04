@@ -1,7 +1,8 @@
-module TestMDL
-    using LMCLUS
-    using Distributions
-    using Base.Test
+using Base.Test
+using LMCLUS
+using Distributions
+
+@testset "MDL" begin
 
     @testset "Quantization" begin
         @test_approx_eq LMCLUS.MDL.univar([1.]) [1./12.]
@@ -17,7 +18,7 @@ module TestMDL
         @test ɛ < 1e-2
     end
 
-    @testset "MDL calculations" begin
+    @testset "Calculations" begin
         # Generate manifold data
         function generate_lm(N::Int, M::Int, C::Int,
                         B::Matrix{Float64},
@@ -91,4 +92,5 @@ module TestMDL
         # Optimal quantizing
         @test LMCLUS.MDL.calculate(LMCLUS.MDL.OptimalQuant, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 39306
     end
+
 end

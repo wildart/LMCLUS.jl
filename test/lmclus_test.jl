@@ -1,6 +1,8 @@
-module TestLMCLUS
-	using LMCLUS
-	using Base.Test
+using Base.Test
+using LMCLUS
+using Combinatorics
+
+@testset "LMCLUS" begin
 
 	# Initialize parameters
 	p = LMCLUSParameters(3)
@@ -45,13 +47,13 @@ module TestLMCLUS
 	# Test clustering
 	p = LMCLUSParameters(5)
 	p.basis_alignment = true
-	p.log_level = 2
+	p.log_level = 0
 	p.dim_adjustment = true
 	p.dim_adjustment_ratio = 0.95
 	p.random_seed = 4572489057
-	println(p) # test show()
+	# println(p) # test show()
 
-	testDataFile = joinpath(splitdir(string(lmclus.env.defs.func.code.file))[1],"..","test","testData")
+	testDataFile = joinpath(dirname(@__FILE__),"testData")
 	ds = readdlm(testDataFile, ',')
 	data = ds[:,1:end-1]'
 
@@ -65,13 +67,13 @@ module TestLMCLUS
 	manifolds = lmclus(data,p)
 	@test length(manifolds) >= 3
 	@test sum(map(m->length(m.points), manifolds)) == size(ds, 1)
-	print("Comparing indexes of manifolds: ")
-	for (i,j) in combinations(1:length(manifolds),2)
-		print("($(i), $(j))")
+
+	@testset "Label Match" for idxs in combinations(1:length(manifolds),2)
+		i = idxs[1]
+		j = idxs[2]
 		@test length(symdiff(labels(manifolds[i]), labels(manifolds[j]))) ==
 				length(labels(manifolds[i])) + length(labels(manifolds[j]))
 	end
-	println()
 
 	# Sampling
 	p.histogram_sampling = true
@@ -90,4 +92,5 @@ module TestLMCLUS
 	p.random_seed = 0
 	manifolds = lmclus(data,p)
 	@test length(manifolds) >= 3
+
 end
