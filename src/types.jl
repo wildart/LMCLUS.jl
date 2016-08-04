@@ -12,11 +12,9 @@ type Separation
     "Histogram ranges"
     hist_range::Vector{Float64}
     "Histogram counts"
-    hist_count::Vector{UInt32}
-    "Point to bin assignments"
-    bin_index::Vector{UInt32}
+    hist_count::Vector{Int}
 end
-Separation() = Separation(-Inf, eps(), Inf, -1, Float64[], UInt32[], UInt32[])
+Separation() = Separation(-Inf, eps(), Inf, -1, Float64[], Int[])
 
 # properties
 "Returns separation criteria value which is product of depth and discriminability."

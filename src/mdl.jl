@@ -1,6 +1,7 @@
 module MDL
 
-import ..LMCLUS: Manifold, indim, outdim, mean, projection, separation, histogram
+using StatsBase
+import ..LMCLUS: Manifold, indim, outdim, mean, projection, separation
 
 # Various types for MDL calculation
 abstract MethodType
@@ -250,9 +251,8 @@ function datadl{T<:AbstractFloat}(::Type{Empirical}, C::Manifold, X::Matrix{T},
     E = 0.0
     for i in 1:N-M
         Yb = linspace(Ymin[i], Ymax[i], bins[i]+1)
-        h = histogram(vec(Y[i,:]),Yb)[2]
-        h /= sum(h)
-        E += -sum(map(x-> x > 0. ? x*log2(x) : 0., h))
+        H = fit(Histogram, vec(Y[i,:]), Yb)
+        E += -sum(map(x-> x > 0. ? (x/(n-1))*log2(x/(n-1)) : 0., H.weights))
     end
 
     # Number of bits of two parts for every point

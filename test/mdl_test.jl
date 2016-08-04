@@ -75,7 +75,7 @@ using Distributions
         @test LMCLUS.MDL.calculate(LMCLUS.MDL.Gaussian, Mg, Xg, Pm, Pd) == 3741
 
         # Empirical entropy from optimal quantization
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Empirical, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3894
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Empirical, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3898
         # Empirical entropy from fixed bin size quantization
         @test LMCLUS.MDL.calculate(LMCLUS.MDL.Empirical, Mg, Xg, Pm, Pd, ɛ = 20.0) == 3812
         # Optimal quantizing

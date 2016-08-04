@@ -3,7 +3,7 @@ using LMCLUS
 
 @testset "LMCLUS Types" begin
 
-    s = Separation(10., 10., 10., 10, [10.], [10], [10])
+    s = Separation(10., 10., 10., 10, [10.], [10])
     io = IOBuffer()
     serialize(io, s)
     seek(io, 0)
