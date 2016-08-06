@@ -312,3 +312,16 @@ end
 
 
 end
+
+# Compatibility
+function mdl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, Pm::Int, Pd::Int;
+             dist::Symbol = :OptimalQuant, ɛ::T=1e-2, tot::Int = 1000, tol=1e-8)
+
+    mdltype = dist == :OptimalQuant ? MDL.OptimalQuant : MDL.Raw
+    return MDL.calculate(mdltype, M, X, Pm, Pd, ɛ=ɛ)
+end
+
+function mdl{T<:AbstractFloat}(Ms::Vector{Manifold}, X::Matrix{T}, Pm::Int, Pd::Int;
+            dist::Symbol = :OptimalQuant, ɛ::T=1e-2, tot::Int = 1000, tol=1e-8)
+    return sum([mdl(m,X,Pm,Pd,dist=dist,ɛ=ɛ,tot=tot,tol=tol) for m in Ms])
+end

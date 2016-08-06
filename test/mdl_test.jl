@@ -80,6 +80,7 @@ using Distributions
         @test LMCLUS.MDL.calculate(LMCLUS.MDL.Empirical, Mg, Xg, Pm, Pd, ɛ = 20.0) == 3812
         # Optimal quantizing
         @test LMCLUS.MDL.calculate(LMCLUS.MDL.OptimalQuant, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 4097
+        @test LMCLUS.mdl(Mg, Xg, Pm, Pd, ɛ = 1e-2) == 4097
 
         Mg.d = 0
         @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 9344
@@ -90,7 +91,8 @@ using Distributions
         Xg, Mg = generate_lm(N, M, 10*C, B, bounds, θ, :Gausian; σs = σs)
         @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3200
         # Optimal quantizing
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.OptimalQuant, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 39306
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3200
+
     end
 
 end
