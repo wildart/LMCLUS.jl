@@ -110,6 +110,8 @@ function lmclus{T<:AbstractFloat}(X::Matrix{T},
     if length(index) > 0
         LOG(params, 2, "outliers: $(length(index)), 0D cluster formed")
         em = emptymanifold(0, index)
+        em.μ = zeros(T, N)
+        em.proj = zeros(T, N, 0)
         push!(manifolds, em)
     end
 
