@@ -307,7 +307,7 @@ end
 function calculate{MT<:MethodType, T<:AbstractFloat}(::Type{MT},
              Ms::Vector{Manifold}, X::Matrix{T}, Pm::Int, Pd::Int;
              ɛ::T=1e-2, tot::Int = 1000, tol=1e-8)
-    return sum([calculate(MT,m,X,Pm,Pd,ɛ=ɛ,tot=tot,tol=tol) for m in Ms])
+    return sum([calculate(MT,m,X[:,labels(m)],Pm,Pd,ɛ=ɛ,tot=tot,tol=tol) for m in Ms])
 end
 
 
