@@ -83,15 +83,15 @@ using Distributions
         @test LMCLUS.mdl(Mg, Xg, Pm, Pd, ɛ = 1e-2) == 4097
 
         Mg.d = 0
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 9344
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 9152
         Mg.d = 1
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3136
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3072
 
         srand(923487298)
         Xg, Mg = generate_lm(N, M, 10*C, B, bounds, θ, :Gausian; σs = σs)
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3200
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3072
         # Optimal quantizing
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3200
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3072
 
     end
 

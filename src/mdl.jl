@@ -136,20 +136,29 @@ end
     Various models of MDL calculation (model MDL)
 =#
 
-"""General model description length (v1): L(ML)"""
+#=
+""" General model description length (v1)
+
+    Only encodes linear manifold basis vectors (no orthogonal complement space)
+"""
 function modeldl{MT<:MethodType}(::Type{MT}, C::Manifold, X::Matrix, P::Int)
     N = size(X,1)  # space dimension
     M = indim(C)   # manifold dimension
     return P*(N + M*(N - (M+1)>>1))
 end
+=#
 
-"""General model description length (v2)
+""" General model description length (v2)
 
-    Size independent model description length: L(SI)
+    Encodes linear manifold & orthogonal complement space basis vectors
 """
-function modeldl(::Type{SizeIndependent}, M::Manifold, X::Matrix, P::Int)
+function modeldl{MT<:MethodType}(::Type{MT}, C::Manifold, X::Matrix, P::Int)
     N = size(X,1)  # space dimension
-    return P*(N*(N+3)>>1)
+    return if indim(C) != 0
+        P*N*(N+1)>>1
+    else # for 0D manifold no basis encoding required
+        P*N
+    end
 end
 
 
@@ -161,7 +170,7 @@ function datadl{T<:AbstractFloat}(::Type{SizeIndependent}, C::Manifold, X::Matri
     μ = mean(C)    # manifold translation
 
     intervals, _ = boundingbox(X.-μ, M)
-    bins, _ = optquant(intervals, ɛ)
+    bins, _ = optquant(intervals, ɛ, tot=tot, tol=tol)
 
     return convert(Int, P*2*sum(bins))
 end
@@ -307,7 +316,7 @@ end
 function calculate{MT<:MethodType, T<:AbstractFloat}(::Type{MT},
              Ms::Vector{Manifold}, X::Matrix{T}, Pm::Int, Pd::Int;
              ɛ::T=1e-2, tot::Int = 1000, tol=1e-8)
-    return sum([calculate(MT,m,X,Pm,Pd,ɛ=ɛ,tot=tot,tol=tol) for m in Ms])
+    return sum([calculate(MT,m,X[:,labels(m)],Pm,Pd,ɛ=ɛ,tot=tot,tol=tol) for m in Ms])
 end
 
 
