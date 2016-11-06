@@ -11,10 +11,8 @@ type Separation
     globalmin::Int
     "Histogram ranges"
     hist_range::Vector{Float64}
-    "Histogram counts"
-    hist_count::Vector{Int}
 end
-Separation() = Separation(-Inf, eps(), Inf, -1, Float64[], Int[])
+Separation() = Separation(-Inf, eps(), Inf, -1, Float64[])
 
 # properties
 "Returns separation criteria value which is product of depth and discriminability."
@@ -68,4 +66,8 @@ function Base.dump(io::IO, M::Manifold)
     println(io)
     println(io, "basis: ")
     Base.showarray(io, projection(M), header=false, repr=false)
+end
+
+type LMCLUSException <: Exception
+    msg::String
 end

@@ -67,7 +67,7 @@ function lmclus{T<:AbstractFloat}(X::Matrix{T},
 
         # Perform dimensioality regression
         if params.zero_d_search && indim(best_manifold) == 1
-            LOG(params, 4, "Searching zero dimensional manifold")
+            LOG(params, 3, "Searching zero dimensional manifold")
             # TODO: Look for small dimensional embedding in a found manifold
         end
 
@@ -187,13 +187,14 @@ function find_manifold{T<:AbstractFloat}(X::Matrix{T}, index::Array{Int,1},
             BMdata = X[:, selected]
             Pm = params.mdl_model_precision
             Pd = params.mdl_data_precision
-            mmdl = MDL.calculate(MDL.OptimalQuant, BM, BMdata, Pm, Pd, ɛ = params.mdl_quant_error)
+            mmdl = MDL.calculate(MDL.SizeIndependent, BM, BMdata, Pm, Pd, ɛ = params.mdl_quant_error)
             mraw = MDL.calculate(MDL.Raw, BM, BMdata, Pm, Pd)
 
             cratio = mraw/mmdl
             LOG(params, 4, "MDL: $mmdl, RAW: $mraw, COMPRESS: $cratio")
             if cratio < params.mdl_compres_ratio
                 LOG(params, 3, "MDL: low compression ration $cratio, required $(params.mdl_compres_ratio). Reject manifold... ")
+
                 best_manifold.d = N
                 !params.force_max_dim && break #to higher dimensions
             end
@@ -297,7 +298,11 @@ function calculate_separation{T<:AbstractFloat}(X::Matrix{T}, sample::Vector{Int
     sep = try
         find_separation(X, origin, basis, params)
     catch ex
-        LOG(params, 5, string(ex))
+        if isa(ex, LMCLUSException)
+            LOG(params, 5, ex.msg)
+        else
+            LOG(params, 5, string(ex))
+        end
         Separation()
     end
     return (sep, origin, basis)
@@ -327,7 +332,7 @@ function find_separation{T<:AbstractFloat}(X::Matrix{T}, origin::Vector{T},
     distances = distance_to_manifold(params.histogram_sampling ? X[:,sampleIndex] : X , origin, basis)
     # Define histogram size
     bins = hist_bin_size(distances, params)
-    return kittler(distances, bins=bins, stat=params.ptb_stat)
+    return kittler(distances, bins=bins)
 end
 
 # Determine the number of times to sample the data in order to guaranty

@@ -3,21 +3,20 @@
 #                Pattern Recognition, Vol 19, nr 1. 1986, pp. 41-47.
 using StatsBase
 
-function kittler{T<:AbstractFloat}(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug = false, stat=false)
+function kittler{T<:AbstractFloat}(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug = false)
     # find maximum and minimum
     maxX = maximum(xs)
     minX = minimum(xs)
 
     # get normalized histogram
     r = linspace(minX,maxX,bins+1)
-    # r, c, bi = histogram(xs, r)
     H = fit(Histogram, xs, r)
     Hw = H.weights
     Hn = Hw/convert(T, length(xs)-1)
 
     depth, discriminability, threshold, min_index, criterion_func = kittler(Hn, minX, maxX, tol=tol, debug=debug)
     # depth, discriminability, threshold, min_index, r, c
-    Separation(depth, discriminability, threshold, min_index, r, (stat ? c : Int[]))
+    Separation(depth, discriminability, threshold, min_index, collect(r))
 end
 
 function kittler{T<:AbstractFloat}(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5, debug = false)
@@ -106,7 +105,7 @@ function find_global_min{T<:AbstractFloat}(J::Vector{T}, tol)
     depth = 0
     global_min = 0
     if lmin == N
-        error("No minimum found, unimode histogram")
+        throw(LMCLUSException("No minimum found, unimode histogram"))
     else
         while lmin < N
             # Detect flat
@@ -145,7 +144,7 @@ function find_global_min{T<:AbstractFloat}(J::Vector{T}, tol)
     end
 
     if depth < tol
-        error("No minimum found, unimode histogram")
+        throw(LMCLUSException("No minimum found, unimode histogram"))
     end
 
     depth, global_min
