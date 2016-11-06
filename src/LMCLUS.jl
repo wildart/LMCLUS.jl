@@ -194,9 +194,12 @@ function find_manifold{T<:AbstractFloat}(X::Matrix{T}, index::Array{Int,1},
             LOG(params, 4, "MDL: $mmdl, RAW: $mraw, COMPRESS: $cratio")
             if cratio < params.mdl_compres_ratio
                 LOG(params, 3, "MDL: low compression ration $cratio, required $(params.mdl_compres_ratio). Reject manifold... ")
+                LOG(params, 4, "$(length(selected))  $(length(filtered))  $(length(labels(best_manifold)))")
 
-                best_manifold.d = N
-                !params.force_max_dim && break #to higher dimensions
+                # reset dataset to original state
+                append!(selected, filtered)
+                filtered = Int[]
+                separations = 0
             end
         end
 

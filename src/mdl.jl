@@ -69,6 +69,11 @@ function optquant{T<:AbstractFloat}(intervals::Vector{T}, ɛ::T; tot::Int = 1000
     return N_k_opt, err_opt, C, i
 end
 
+
+"""Calculate LM cluster bounding box using PCA
+
+    Ref: Jonathon Shlens, A Tutorial on Principal Component Analysis, 2005
+"""
 function boundingbox(X, m)
     n, l = size(X)
 
@@ -166,13 +171,14 @@ end
 """
 function datadl{T<:AbstractFloat}(::Type{SizeIndependent}, C::Manifold, X::Matrix{T},
                                   P::Int, ɛ::T, tot::Int, tol::T)
+    N = size(X,1)  # space dimension
     M = indim(C)   # manifold dimension
     μ = mean(C)    # manifold translation
 
     intervals, _ = boundingbox(X.-μ, M)
     bins, _ = optquant(intervals, ɛ, tot=tot, tol=tol)
 
-    return convert(Int, P*2*sum(bins))
+    return convert(Int, P*(N + 2*sum(bins)))
 end
 
 #=
@@ -318,15 +324,12 @@ function calculate{MT<:MethodType, T<:AbstractFloat}(::Type{MT},
              ɛ::T=1e-2, tot::Int = 1000, tol=1e-8)
     return sum([calculate(MT,m,X[:,labels(m)],Pm,Pd,ɛ=ɛ,tot=tot,tol=tol) for m in Ms])
 end
-
-
 end
 
 # Compatibility
 function mdl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, Pm::Int, Pd::Int;
              dist::Symbol = :OptimalQuant, ɛ::T=1e-2, tot::Int = 1000, tol=1e-8)
-
-    mdltype = dist == :OptimalQuant ? MDL.OptimalQuant : MDL.Raw
+    mdltype = eval(MDL, dist)
     return MDL.calculate(mdltype, M, X, Pm, Pd, ɛ=ɛ)
 end
 
