@@ -197,3 +197,9 @@ function assignments(Ms::Vector{Manifold})
     end
     return lbls
 end
+
+"Projection of the data to the manifold"
+function project{T<:AbstractFloat}(m::Manifold, X::Matrix{T})
+    proj = projection(m)'*(X.-mean(m))
+    return proj
+end
