@@ -1,20 +1,23 @@
 # OTSU THRESHOLDING ALGORITH
 # REFERENCES:   N. Otsu: "A threshold selection method from gray-level histograms"
 #               Automatica, 1975, 11, 285-296.
+using StatsBase
+
 function otsu{T<:AbstractFloat}(xs::Vector{T}; bins = 20, debug = false)
     # find maximum and minimum
     minX, maxX = extrema(xs)
 
     # get normalized histogram
     r = linspace(minX, maxX, bins+1)
-    #r, c = hist(xs, r)
-    r, c, bi = histogram(xs, r)
-    H = c/sum(c)
-    threshold, min_index, varmax = otsu(H, r, debug=debug)
-    Separation(varmax, 1., threshold, min_index, r, c)
+    H = fit(Histogram, xs, r)
+    Hw = H.weights
+    Hn = Hw/convert(T, length(xs)-1)
+
+    threshold, min_index, varmax = otsu(Hn, r, debug=debug)
+    Separation(varmax, 1., threshold, min_index, collect(r))
 end
 
-function otsu{T<:AbstractFloat}(H::Vector{T}, hrange::Vector{Float64}; debug = false)
+function otsu{T<:AbstractFloat}(H::Vector{T}, hrange::AbstractVector{Float64}; debug = false)
     N = length(H)
 
     hsum = sum((1:N).*H)
