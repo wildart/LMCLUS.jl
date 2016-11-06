@@ -33,6 +33,6 @@ using Base.Test
 	@test_approx_eq_eps threshold(res) 64.0 5
 
 	# Try unimodal histogram
-	@test_throws ErrorException kittler(rand(Normal(1, 10), N), bins=10)
+	@test_throws LMCLUS.LMCLUSException kittler(rand(Normal(1, 10), N), bins=10)
 
 end

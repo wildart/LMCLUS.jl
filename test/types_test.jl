@@ -3,7 +3,7 @@ using LMCLUS
 
 @testset "LMCLUS Types" begin
 
-    s = Separation(10., 10., 10., 10, [10.], [10])
+    s = Separation(10., 10., 10., 10, [10.])
     io = IOBuffer()
     serialize(io, s)
     seek(io, 0)
@@ -13,7 +13,6 @@ using LMCLUS
     @test s.threshold == d.threshold
     @test s.globalmin == d.globalmin
     @test s.hist_range == d.hist_range
-    @test s.hist_count == d.hist_count
     @test s.threshold == threshold(s)
 
     m = Manifold(2, [2., 2.], [2. 2.; 2. 2.], [1, 2, 3], s)
@@ -41,6 +40,5 @@ using LMCLUS
     @test s.threshold == S.threshold
     @test s.globalmin == S.globalmin
     @test s.hist_range == S.hist_range
-    @test s.hist_count == S.hist_count
     @test s.threshold == threshold(S)
 end
