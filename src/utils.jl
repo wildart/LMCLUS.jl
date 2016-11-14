@@ -203,3 +203,36 @@ function project{T<:AbstractFloat}(m::Manifold, X::Matrix{T})
     proj = projection(m)'*(X.-mean(m))
     return proj
 end
+
+function filter_separeted(selected_points, X, O, B, S)
+    cluster_points = Int[]
+    removed_points  = Int[]
+    θ = threshold(S)
+
+    for i in eachindex(selected_points)
+        idx = selected_points[i]
+        # point i has distances less than the threshold value
+        d = distance_to_manifold(X[:, idx], O, B)
+        if d < θ
+            push!(cluster_points, idx)
+        else
+            push!(removed_points, idx)
+        end
+    end
+
+    return cluster_points, removed_points
+end
+
+function adjustbasis!{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, P::LMCLUSParameters)
+    R = if indim(M) > 0 && !P.dim_adjustment
+        fit(PCA, X[:, labels(M)]; maxoutdim=indim(M)) # method=:svd,
+    else
+        fit(PCA, X[:, labels(M)]; pratio = P.dim_adjustment_ratio > 0.0 ? P.dim_adjustment_ratio : 0.99)
+    end
+    if P.dim_adjustment
+        M.d = MultivariateStats.outdim(R)
+    end
+    M.μ = MultivariateStats.mean(R)
+    M.proj = MultivariateStats.projection(R)
+    return M
+end

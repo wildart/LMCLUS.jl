@@ -65,42 +65,82 @@ function lmclus{T<:AbstractFloat}(X::Matrix{T},
         best_manifold, remains = find_manifold(X, index, params, prngs, length(manifolds))
         number_of_clusters += 1
 
-        # Perform dimensioality regression
-        if params.zero_d_search && indim(best_manifold) == 1
-            LOG(params, 3, "Searching zero dimensional manifold")
-            # TODO: Look for small dimensional embedding in a found manifold
-        end
-
         # Perform basis alignment through PCA on found cluster
-        if params.basis_alignment
-            if indim(best_manifold) > 0 && !params.dim_adjustment
-                R = fit(PCA,
-                        X[:, labels(best_manifold)];
-                        method=:svd,
-                        maxoutdim=indim(best_manifold))
-            else
-                R = fit(PCA,
-                        X[:, labels(best_manifold)];
-                        method=:svd,
-                        pratio = params.dim_adjustment_ratio > 0.0 ? params.dim_adjustment_ratio : 0.99)
+        params.basis_alignment && adjustbasis!(best_manifold, X, params)
+
+        # Perform dimensioality regression
+        if params.zero_d_search && indim(best_manifold) <= 1
+            LOG(params, 3, "Searching zero dimensional manifolds...")
+
+            # adjust noise cluster to form 1D manifold
+            if indim(best_manifold) == 0
+                R = fit(PCA, X[:, labels(best_manifold)], maxoutdim = 1)
+                best_manifold.d = 0
+                best_manifold.μ = MultivariateStats.mean(R)
+                best_manifold.proj = MultivariateStats.projection(R)
+                LOG(params, 4, @sprintf("Adjusted noise cluster size=%d, dim=%d",
+                               length(labels(best_manifold)), indim(best_manifold)))
             end
-            pr = @sprintf("%.5f", principalratio(R))
-            LOG(params, 3, "aligning manifold basis: $pr")
-            best_manifold = Manifold(MultivariateStats.outdim(R),
-                                     MultivariateStats.mean(R),
-                                     MultivariateStats.projection(R),
-                                     labels(best_manifold), separation(best_manifold))
+
+            while true
+                L = labels(best_manifold)
+                # project data to manifold subspace
+                Z = project(best_manifold, X[:,L]) |> vec
+                # determine separation parameters
+                ZDsep = try
+                    kittler(Z)
+                catch ex
+                    if isa(ex, LMCLUSException)
+                        LOG(params, 5, ex.msg)
+                    else
+                        LOG(params, 5, string(ex))
+                    end
+                    Separation()
+                end
+                # stop search if we cannot separate manifold
+                criteria(ZDsep) < params.best_bound && break
+                LOG(params, 4, "Found zero-dimensional manifold. Separating...")
+
+                # separate cluster points
+                cluster_points = L[find(p->p<threshold(ZDsep), Z)]
+                removed_points = setdiff(L, cluster_points)
+
+                # cannot form small clusters, stop searching
+                length(cluster_points) <= params.min_cluster_size && break
+
+                # update manifold description
+                R = fit(PCA, X[:, removed_points], maxoutdim = 1)
+                best_manifold.points = removed_points # its labels
+                best_manifold.μ = MultivariateStats.mean(R)
+                best_manifold.proj = MultivariateStats.projection(R)
+                # best_manifold.d = MultivariateStats.outdim(R) == MultivariateStats.indim(R) ? 0 : MultivariateStats.outdim(R)
+                LOG(params, 4, "Shunk cluster to $(length(removed_points)) points.")
+
+                # form 0D cluster
+                R = fit(PCA, X[:, cluster_points])
+                zd_manifold = Manifold(0, MultivariateStats.mean(R),
+                                       MultivariateStats.projection(R),
+                                       cluster_points, ZDsep)
+                LOG(params, 4, "0D cluster formed with $(length(cluster_points)) points.")
+
+                # add new manifold to output
+                push!(manifolds, zd_manifold)
+                LOG(params, 2, @sprintf("found cluster #%d, size=%d, dim=%d",
+                    number_of_clusters, length(labels(zd_manifold)), indim(zd_manifold)))
+                number_of_clusters += 1
+
+                # main body of the noise cluster is form, stop further search (???)
+                indim(best_manifold) == 0 && break
+            end
         end
 
         # Add a new manifold cluster to collection
-        LOG(params, 2, @sprintf("found cluster # %d, size=%d, dim=%d",
+        LOG(params, 2, @sprintf("found cluster #%d, size=%d, dim=%d",
                 number_of_clusters, length(labels(best_manifold)), indim(best_manifold)))
         push!(manifolds, best_manifold)
 
         # Stop clustering if found specified number of clusters
-        if length(manifolds) == params.stop_after_cluster
-            break
-        end
+        length(manifolds) == params.stop_after_cluster && break
 
         # Look at the rest of the dataset
         index = remains
@@ -148,27 +188,16 @@ function find_manifold{T<:AbstractFloat}(X::Matrix{T}, index::Array{Int,1},
             end
 
             # filter separated points
-            manifold_points = Int[]
-            removed_points  = Int[]
-            for i=1:length(selected)
-                idx = selected[i]
-                # point i has distances less than the threshold value
-                d = distance_to_manifold(X[:, idx], origin, basis)
-                if d < threshold(sep)
-                    push!(manifold_points, idx)
-                else
-                    push!(removed_points, idx)
-                end
-            end
+            cluster_points, removed_points = filter_separeted(selected, X, origin, basis, sep)
 
             # small amount of points is considered noise, try to bump dimension
-            if length(manifold_points) <= params.min_cluster_size
+            if length(cluster_points) <= params.min_cluster_size
                 LOG(params, 3, "noise: cluster size < ", params.min_cluster_size," points")
                 break
             end
 
             # Create manifold cluster from good separation found
-            selected = manifold_points
+            selected = cluster_points
             best_manifold = Manifold(sep_dim, origin, basis, selected, sep)
             append!(filtered, removed_points)
 
