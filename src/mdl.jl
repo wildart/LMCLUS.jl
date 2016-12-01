@@ -1,7 +1,7 @@
 module MDL
 
 using StatsBase
-import ..LMCLUS: Manifold, indim, outdim, mean, projection, separation
+import ..LMCLUS: Manifold, indim, outdim, mean, projection, separation, labels
 
 # Various types for MDL calculation
 abstract MethodType
@@ -81,7 +81,11 @@ function boundingbox(X, m)
     F = svdfact(X'/sqrt(n))
 
     # Take an orthogonal compliment subspace (OCS) basis
-    r = (m+1):min(n,l)
+    r = if m < min(n,l)
+        (m+1):min(n,l)
+    else
+        1:min(n,l)
+    end
     BC = F[:V][:,r]
 
     # Project data to OCS
