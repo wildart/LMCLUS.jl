@@ -12,8 +12,11 @@ type ZeroDim <: MethodType end
 type Uniform <: MethodType end
 type Gaussian <: MethodType end
 type Empirical <: MethodType end
-type OptimalQuant <: MethodType end
-type SizeIndependent <: MethodType end
+type OptimalQuant <: MethodType end    # ICPR-2016 Eq. 6
+type SizeIndependent <: MethodType end # ICPR-2016 Eq. 8
+
+# Set default method for MDL calculation
+DefaultType = OptimalQuant
 
 """Optimal number of bins given constant C over intervals"""
 function optbins{T<:AbstractFloat}(intervals::Vector{T}, C::T)
@@ -250,7 +253,7 @@ function datadl{T<:AbstractFloat}(::Type{Empirical}, C::Manifold, X::Matrix{T},
                                   P::Int, ɛ::T, tot::Int, tol::T)
     N = size(X,1)  # space dimension
     M = indim(C)   # manifold dimension
-    n = outdim(C)   # manifold dimension
+    n = outdim(C)   # manifold cluster size
     μ = mean(C)    # manifold translation
 
     # Point projected on manifold
@@ -327,6 +330,12 @@ function calculate{MT<:MethodType, T<:AbstractFloat}(::Type{MT},
              Ms::Vector{Manifold}, X::Matrix{T}, Pm::Int, Pd::Int;
              ɛ::T=1e-2, tot::Int = 1000, tol=1e-8)
     return sum([calculate(MT,m,X[:,labels(m)],Pm,Pd,ɛ=ɛ,tot=tot,tol=tol) for m in Ms])
+end
+
+"Set default MDL calculation by specifying related `MDL.MethodType` type as parameter `typ`"
+function type!(typ::DataType)
+    @assert typ <: MethodType "Invalid MDL method type"
+    global DefaultType = typ
 end
 end
 

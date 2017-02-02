@@ -82,15 +82,17 @@ using Combinatorics
 	@test length(manifolds) >= 3
 	p.histogram_sampling = false
 
+	# RNG seed
+	p.random_seed = 0
+	manifolds = lmclus(data,p)
+	@test length(manifolds) >= 3
+
 	# MDL
+	LMCLUS.MDL.type!(LMCLUS.MDL.SizeIndependent)
 	p.mdl = true
 	manifolds = lmclus(data,p)
 	@test length(manifolds) >= 3
 	p.mdl = false
 
-	# RNG seed
-	p.random_seed = 0
-	manifolds = lmclus(data,p)
-	@test length(manifolds) >= 3
 
 end

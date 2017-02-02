@@ -216,7 +216,7 @@ function find_manifold{T<:AbstractFloat}(X::Matrix{T}, index::Array{Int,1},
             BMdata = X[:, selected]
             Pm = params.mdl_model_precision
             Pd = params.mdl_data_precision
-            mmdl = MDL.calculate(MDL.SizeIndependent, BM, BMdata, Pm, Pd, ɛ = params.mdl_quant_error)
+            mmdl = MDL.calculate(MDL.DefaultType, BM, BMdata, Pm, Pd, ɛ = params.mdl_quant_error)
             mraw = MDL.calculate(MDL.Raw, BM, BMdata, Pm, Pd)
 
             cratio = mraw/mmdl
