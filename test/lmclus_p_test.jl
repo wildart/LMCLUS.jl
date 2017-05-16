@@ -7,7 +7,7 @@ using Base.Test
 @testset "LMCLUS Parallel" begin
     @test nprocs() == 2
 
-    p = LMCLUSParameters(5)
+    p = LMCLUS.Parameters(5)
     p.log_level = 0
     p.random_seed = 4572489057
     testDataFile = joinpath(dirname(@__FILE__),"testData")

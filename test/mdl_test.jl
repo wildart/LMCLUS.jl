@@ -26,7 +26,7 @@ using Distributions
                         D::Symbol = :Uniform;  σs::Vector{Float64} = ones(N))
             @assert size(bounds) == (N,2) "Define bounds for every dimension"
             @assert size(B) == (N,M) "Define bounds for every dimension"
-            S = Separation()
+            S = LMCLUS.Separation()
             S.threshold = θ
             manifold = Manifold(M, zeros(N), B, round(Int, linspace(1, C, C)), S)
 
@@ -75,7 +75,7 @@ using Distributions
         @test LMCLUS.MDL.calculate(LMCLUS.MDL.Gaussian, Mg, Xg, Pm, Pd) == 3741
 
         # Empirical entropy from optimal quantization
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Empirical, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3898
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Empirical, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3893
         # Empirical entropy from fixed bin size quantization
         @test LMCLUS.MDL.calculate(LMCLUS.MDL.Empirical, Mg, Xg, Pm, Pd, ɛ = 20.0) == 3812
         # Optimal quantizing

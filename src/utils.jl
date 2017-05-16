@@ -2,7 +2,7 @@
 emptymanifold(N::Int, points::Vector{Int}=Int[]) = Manifold(N, zeros(N), eye(N,N), points, Separation())
 
 """Returns seed from parameters"""
-getseed(params::LMCLUSParameters) = params.random_seed == 0 ? time_ns() : params.random_seed
+getseed(params::LMCLUS.Parameters) = params.random_seed == 0 ? time_ns() : params.random_seed
 
 """
 Sample uniformly k integers from the integer range 1:n, making sure that
@@ -223,7 +223,7 @@ function filter_separeted(selected_points, X, O, B, S)
     return cluster_points, removed_points
 end
 
-function adjustbasis!{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, P::LMCLUSParameters)
+function adjustbasis!{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, P::LMCLUS.Parameters)
     R = if indim(M) > 0 && !P.dim_adjustment
         fit(PCA, X[:, labels(M)]; maxoutdim=indim(M)) # method=:svd,
     else

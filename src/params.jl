@@ -1,7 +1,7 @@
 import Base.show
 
 "LMCLUS algorithm parameters"
-type LMCLUSParameters
+type Parameters
     "Minimum dimension of the cluster"
     min_dim::Int
     "Maximum dimension of the cluster"
@@ -51,7 +51,7 @@ type LMCLUSParameters
     "Log level (0-5)"
     log_level::Int
 
-    LMCLUSParameters(max_dim) = new(
+    Parameters(max_dim) = new(
         1,        # min_dim
         max_dim,  # max_dim
         10,       # number_of_clusters
@@ -79,7 +79,7 @@ type LMCLUSParameters
     )
 end
 
-show(io::IO, p::LMCLUSParameters) =
+show(io::IO, p::Parameters) =
     print(io, """Linear Manifold Clustering parameters:
     Min dimension (min_dim): $(p.min_dim)
     Max dimension (max_dim): $(p.max_dim)
@@ -112,7 +112,7 @@ show(io::IO, p::LMCLUSParameters) =
 # DEBUG (32): Debug (3)
 # DEV (36): Development (4)
 # Trace (33): Trace (5)
-function LOG(p::LMCLUSParameters, lvl, msg...)
+function LOG(p::Parameters, lvl, msg...)
     if p.log_level < lvl
         return
     else

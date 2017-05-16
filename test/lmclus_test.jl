@@ -5,7 +5,7 @@ using Combinatorics
 @testset "LMCLUS" begin
 
 	# Initialize parameters
-	p = LMCLUSParameters(3)
+	p = LMCLUS.Parameters(3)
 
 	# Test sampling parameters
 	p.number_of_clusters = 1
@@ -39,13 +39,13 @@ using Combinatorics
 	# Test parameters
 	l = 1000
 	x = rand(l)
-	p = LMCLUSParameters(5)
+	p = LMCLUS.Parameters(5)
 	@test LMCLUS.hist_bin_size(x, p) == round(Int, l*p.max_bin_portion)
 	p.hist_bin_size = 20
 	@test LMCLUS.hist_bin_size(x, p) == p.hist_bin_size
 
 	# Test clustering
-	p = LMCLUSParameters(5)
+	p = LMCLUS.Parameters(5)
 	p.basis_alignment = true
 	p.log_level = 0
 	p.dim_adjustment = true
@@ -59,7 +59,7 @@ using Combinatorics
 
 	# test separation calculations
 	s = LMCLUS.calculate_separation(data, [1,2,3], p)
-	@test typeof(s[1]) == Separation
+	@test typeof(s[1]) == LMCLUS.Separation
 	@test typeof(s[2]) == Vector{Float64}
 	@test typeof(s[3]) == Matrix{Float64}
 

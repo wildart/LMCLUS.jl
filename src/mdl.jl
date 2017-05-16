@@ -273,7 +273,7 @@ function datadl{T<:AbstractFloat}(::Type{Empirical}, C::Manifold, X::Matrix{T},
     E = 0.0
     for i in 1:N-M
         Yb = linspace(Ymin[i], Ymax[i], bins[i]+1)
-        H = fit(Histogram, vec(Y[i,:]), Yb)
+        H = fit(Histogram, vec(Y[i,:]), Yb, closed=:left)
         E += -sum(map(x-> x > 0. ? (x/(n-1))*log2(x/(n-1)) : 0., H.weights))
     end
 

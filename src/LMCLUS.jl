@@ -3,12 +3,10 @@ module LMCLUS
 import MultivariateStats: MultivariateStats, PCA, fit, principalratio
 
 export  lmclus,
-        LMCLUSParameters, Diagnostic,
 
         kittler, otsu,
         distance_to_manifold,
 
-        Separation,
         criteria,
         threshold,
 
@@ -27,11 +25,12 @@ include("utils.jl")
 include("kittler.jl")
 include("otsu.jl")
 include("mdl.jl")
+include("deprecates.jl")
 
 #
 # Linear Manifold Clustering
 #
-function lmclus{T<:AbstractFloat}(X::Matrix{T}, params::LMCLUSParameters, np::Int=nprocs())
+function lmclus{T<:AbstractFloat}(X::Matrix{T}, params::Parameters, np::Int=nprocs())
     # Setup RNG
     seed = getseed(params)
     mts = if np == 1
@@ -43,7 +42,7 @@ function lmclus{T<:AbstractFloat}(X::Matrix{T}, params::LMCLUSParameters, np::In
 end
 
 function lmclus{T<:AbstractFloat}(X::Matrix{T},
-                params::LMCLUSParameters,
+                params::Parameters,
                 prngs::Vector{MersenneTwister})
 
     @assert length(prngs) >= nprocs() "Number of PRNGS cannot be less then processes."
@@ -160,7 +159,7 @@ end
 
 # Find manifold in multiple dimensions
 function find_manifold{T<:AbstractFloat}(X::Matrix{T}, index::Array{Int,1},
-                                         params::LMCLUSParameters,
+                                         params::Parameters,
                                          prngs::Vector{MersenneTwister},
                                          found::Int=0)
     filtered = Int[]
@@ -254,7 +253,7 @@ end
 # 3- of all the linear manifolds sampled select the one whose associated distance histogram
 #    shows the best separation between to modes.
 function find_best_separation{T<:AbstractFloat}(X::Matrix{T}, lm_dim::Int,
-                              params::LMCLUSParameters,
+                              params::Parameters,
                               prngs::Vector{MersenneTwister},
                               found::Int=0)
     full_space_dim, data_size = size(X)
@@ -304,7 +303,7 @@ function find_best_separation{T<:AbstractFloat}(X::Matrix{T}, lm_dim::Int,
 end
 
 function sample_manifold{T<:AbstractFloat}(X::Matrix{T}, lm_dim::Int,
-                        params::LMCLUSParameters, prng::MersenneTwister, num_samples::Int)
+                        params::Parameters, prng::MersenneTwister, num_samples::Int)
     best_sep = Separation()
     best_origin = T[]
     best_basis = zeros(0, 0)
@@ -325,7 +324,7 @@ function sample_manifold{T<:AbstractFloat}(X::Matrix{T}, lm_dim::Int,
     return best_sep, best_origin, best_basis, prng
 end
 
-function calculate_separation{T<:AbstractFloat}(X::Matrix{T}, sample::Vector{Int}, params::LMCLUSParameters)
+function calculate_separation{T<:AbstractFloat}(X::Matrix{T}, sample::Vector{Int}, params::Parameters)
     origin, basis = form_basis(X[:, sample])
     sep = try
         find_separation(X, origin, basis, params)
@@ -342,7 +341,7 @@ end
 
 # Find separation criteria
 function find_separation{T<:AbstractFloat}(X::Matrix{T}, origin::Vector{T},
-                        basis::Matrix{T}, params::LMCLUSParameters)
+                        basis::Matrix{T}, params::Parameters)
     # Define sample for distance calculation
     if params.histogram_sampling
         Z_01=2.576  # Z random variable, confidence interval 0.99
@@ -372,7 +371,7 @@ end
 # of error that does not exceed an error bound.
 # Three different types of heuristics may be used depending on LMCLUS's input parameters.
 function sample_quantity(k::Int, full_space_dim::Int, data_size::Int,
-                         params::LMCLUSParameters, S_found::Int)
+                         params::Parameters, S_found::Int)
 
     S_max = params.number_of_clusters
     if S_max <= 1
@@ -438,7 +437,7 @@ function form_basis_svd{T<:AbstractFloat}(X::Matrix{T})
 end
 
 # Calculate histogram size
-function hist_bin_size(xs::Vector, params::LMCLUSParameters)
+function hist_bin_size(xs::Vector, params::Parameters)
     return params.hist_bin_size == 0 ? (round(Int, length(xs) * params.max_bin_portion)) : params.hist_bin_size
 end
 

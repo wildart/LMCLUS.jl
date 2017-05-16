@@ -10,7 +10,7 @@ function kittler{T<:AbstractFloat}(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug
 
     # get normalized histogram
     r = linspace(minX,maxX,bins+1)
-    H = fit(Histogram, xs, r)
+    H = fit(Histogram, xs, r, closed=:left)
     Hw = H.weights
     Hn = Hw/convert(T, length(xs)-1)
 
