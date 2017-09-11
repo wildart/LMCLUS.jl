@@ -1,6 +1,6 @@
 module LMCLUS
 
-import MultivariateStats: MultivariateStats, PCA, fit, principalratio
+import MultivariateStats: MultivariateStats, PCA, fit, principalratio, indim, outdim, projection
 
 export  lmclus,
 
@@ -270,7 +270,7 @@ function find_best_separation{T<:AbstractFloat}(X::Matrix{T}, lm_dim::Int,
     samples_proc = round(Int, Q / length(prngs))
 
     # gc_enable(false)
-    arr = Array(Future, length(prngs))
+    arr = Array{Future}(length(prngs))
     np = nprocs()
     for i in 1:length(prngs)
         pid = (i%np)+1
@@ -446,8 +446,8 @@ end
 function distance_to_manifold{T<:AbstractFloat}(point::Vector{T}, basis::Matrix{T})
     d_n = 0.0
     d_v = basis' * point
-    c = sumabs2(point)
-    b = sumabs2(d_v)
+    c = sum(abs2, point)
+    b = sum(abs2, d_v)
     # @inbounds for j = 1:length(point)
     #     c += point[j]*point[j]
     #     b += d_v[j]*d_v[j]

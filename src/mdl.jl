@@ -20,7 +20,7 @@ DefaultType = OptimalQuant
 
 """Optimal number of bins given constant C over intervals"""
 function optbins{T<:AbstractFloat}(intervals::Vector{T}, C::T)
-    ns = ceil(intervals * exp( (C - sum(intervals))/length(intervals) ), 0 )
+    ns = ceil.(intervals * exp( (C - sum(intervals))/length(intervals) ), 0 )
     nsi = zeros(UInt, size(ns))
     for i in 1:length(nsi)
         nsi[i] = if ns[i] >= typemax(UInt)
@@ -40,15 +40,15 @@ quanterror(intervals, N_k_opt) = sum(univar(intervals./N_k_opt))
 
 """Optimal quantization of the interval"""
 function optquant{T<:AbstractFloat}(intervals::Vector{T}, ɛ::T; tot::Int = 1000, tol=1e-6)
-    intervals[isnan(intervals)] = eps() # remove nans
+    intervals[isnan.(intervals)] = eps() # remove nans
     intervals[intervals .< eps()] = eps() # remove 0s
-    intervals[isinf(intervals)] = 1. # remove inf
+    intervals[isinf.(intervals)] = 1. # remove inf
 
     # Setup C bounds
     K = length(intervals)
     C = 0.
     Cmin = 0.
-    Cmax = K*log(typemax(UInt)./intervals)+sum(log(intervals)) |> minimum
+    Cmax = K*log.(typemax(UInt)./intervals)+sum(log.(intervals)) |> minimum
 
     i = 1
     N_k_opt = ones(UInt, K)
@@ -97,7 +97,7 @@ function boundingbox(X, m)
     # Calculate data spread in OCS
     Ymin = vec(minimum(Y, 2))
     Ymax = vec(maximum(Y, 2))
-    intervals = abs(Ymax - Ymin)
+    intervals = abs.(Ymax - Ymin)
 
     return intervals, Y, Ymin, Ymax
 end
