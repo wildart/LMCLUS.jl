@@ -267,15 +267,16 @@ function find_best_separation(X::Matrix{T}, lm_dim::Int,
     # divide samples between PRNGs
     samples_proc = round(Int, Q / length(prngs))
 
-    # gc_enable(false)
+    # enable parallel sampling
     arr = Array{Future}(length(prngs))
     np = nprocs()
+    nodeid = myid()
     for i in 1:length(prngs)
-        pid = (i%np)+1
+        pid = nodeid == 1 ? (i%np)+1 : nodeid #  if running from node 1
         arr[i] = remotecall(sample_manifold, pid, X, lm_dim+1, params, prngs[i], samples_proc)
     end
 
-    # Reduce values of manifolds from remote sources
+    # reduce values of manifolds from remote sources
     best_sep = Separation()
     best_origin = T[]
     best_basis = zeros(0, 0)
@@ -288,8 +289,8 @@ function find_best_separation(X::Matrix{T}, lm_dim::Int,
         end
         prngs[i] = mt
     end
-    # gc_enable(true)
 
+    # bad sampling
     cr = criteria(best_sep)
     if cr <= 0.
         LOG(params, 4, "no good histograms to separate data !!!")
