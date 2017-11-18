@@ -2,7 +2,7 @@ using Base.Test
 using LMCLUS
 using Combinatorics
 
-@testset "LMCLUS" begin
+@testset "Clustering" begin
 
 	# Initialize parameters
 	p = LMCLUS.Parameters(3)
@@ -27,14 +27,14 @@ using Combinatorics
 	data = float(reshape([1,1,0, 1,2,2, -1,0,2, 0,0,1],3,4))
 	basis = data[:, 2:end]
 	result = float(reshape([1,2,2,-2,-1,2, 2,-2,1],3,3))/3.0
-	@test_approx_eq LMCLUS.orthogonalize(basis) result
+	@test LMCLUS.orthogonalize(basis) ≈ result
 	data = float(reshape([1,1,0, 2,3,2, 0,1,2, 1,1,1],3,4))
-	@test_approx_eq LMCLUS.form_basis(data)[2] result
+	@test LMCLUS.form_basis(data)[2] ≈ result
 
 	# Test distance calculation
 	basis = reshape([1.,0.,0.,0.,1.,0.],3,2)
 	point = [1.0,1.0,1.0]
-	@test_approx_eq distance_to_manifold(point, basis) 1.0
+	@test distance_to_manifold(point, basis) ≈ 1.0
 
 	# Test parameters
 	l = 1000
@@ -93,6 +93,5 @@ using Combinatorics
 	manifolds = lmclus(data,p)
 	@test length(manifolds) >= 3
 	p.mdl = false
-
 
 end

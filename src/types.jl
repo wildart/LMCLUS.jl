@@ -1,6 +1,6 @@
 ## histogram separation type
 "Cluster separation parameters"
-type Separation
+mutable struct Separation
     "Separation depth (depth between separated histogram modes)"
     depth::Float64
     "Separation discriminability (width between separated histogram modes)"
@@ -25,7 +25,7 @@ function Base.show(io::IO, S::Separation)
 end
 
 "Linear manifold cluster"
-type Manifold
+mutable struct Manifold
     "Dimension of the manifold"
     d::Int
     "Translation vector that contains coordinates of the linear subspace origin"
@@ -68,6 +68,6 @@ function Base.dump(io::IO, M::Manifold)
     Base.showarray(io, projection(M), header=false, repr=false)
 end
 
-type LMCLUSException <: Exception
+struct LMCLUSException <: Exception
     msg::String
 end

@@ -3,7 +3,7 @@
 #                Pattern Recognition, Vol 19, nr 1. 1986, pp. 41-47.
 using StatsBase
 
-function kittler{T<:AbstractFloat}(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug = false)
+function kittler(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug = false) where {T<:Real}
     # find maximum and minimum
     maxX = maximum(xs)
     minX = minimum(xs)
@@ -19,7 +19,7 @@ function kittler{T<:AbstractFloat}(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug
     Separation(depth, discriminability, threshold, min_index, collect(r))
 end
 
-function kittler{T<:AbstractFloat}(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5, debug = false)
+function kittler(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5, debug = false) where {T<:Real}
     N = length(H)
 
     # calculate threshold
@@ -74,13 +74,12 @@ function kittler{T<:AbstractFloat}(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5, 
     depth, global_min = find_global_min(J, tol)
     min_index = round(Int, global_min)
     threshold = minX + ( global_min * (maxX - minX) / N )
-    #threshold2 = (r[min_index] + r[min_index+1])/2 # or from histogram bins' edges
     discriminability = (abs(Mu1[min_index]-Mu2[min_index]))/(sqrt(Var1[min_index]+Var2[min_index]))
 
     depth, discriminability, threshold, min_index, J
 end
 
-function find_global_min{T<:AbstractFloat}(J::Vector{T}, tol)
+function find_global_min(J::Vector{T}, tol) where {T<:Real}
     N = length(J)
 
     # Mark minima

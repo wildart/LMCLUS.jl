@@ -5,8 +5,8 @@ using Distributions
 @testset "MDL" begin
 
     @testset "Quantization" begin
-        @test_approx_eq LMCLUS.MDL.univar([1.]) [1./12.]
-        @test_approx_eq LMCLUS.MDL.optbins([1.], 1.) 1.
+        @test LMCLUS.MDL.univar([1.0]) ≈ [1 ./ 12.0]
+        @test LMCLUS.MDL.optbins([1.], 1.) == [one(UInt64)]
         bins, ɛ, c, itr = LMCLUS.MDL.optquant([1.], 1e-2)
         @test bins[1] == 29
         @test ɛ < 1e-2
@@ -28,7 +28,7 @@ using Distributions
             @assert size(B) == (N,M) "Define bounds for every dimension"
             S = LMCLUS.Separation()
             S.threshold = θ
-            manifold = Manifold(M, zeros(N), B, round(Int, linspace(1, C, C)), S)
+            manifold = Manifold(M, zeros(N), B, round.(Int, linspace(1, C, C)), S)
 
             c = 1
             X = zeros(N,C)

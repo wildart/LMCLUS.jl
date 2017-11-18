@@ -30,7 +30,7 @@ include("deprecates.jl")
 #
 # Linear Manifold Clustering
 #
-function lmclus{T<:AbstractFloat}(X::Matrix{T}, params::Parameters, np::Int=nprocs())
+function lmclus(X::Matrix{T}, params::Parameters, np::Int=nprocs()) where {T<:Real}
     # Setup RNG
     seed = getseed(params)
     mts = if np == 1
@@ -41,9 +41,7 @@ function lmclus{T<:AbstractFloat}(X::Matrix{T}, params::Parameters, np::Int=npro
     return lmclus(X, params, mts)
 end
 
-function lmclus{T<:AbstractFloat}(X::Matrix{T},
-                params::Parameters,
-                prngs::Vector{MersenneTwister})
+function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}) where {T<:Real}
 
     @assert length(prngs) >= nprocs() "Number of PRNGS cannot be less then processes."
 
@@ -158,10 +156,10 @@ function lmclus{T<:AbstractFloat}(X::Matrix{T},
 end
 
 # Find manifold in multiple dimensions
-function find_manifold{T<:AbstractFloat}(X::Matrix{T}, index::Array{Int,1},
-                                         params::Parameters,
-                                         prngs::Vector{MersenneTwister},
-                                         found::Int=0)
+function find_manifold(X::Matrix{T}, index::Array{Int,1},
+                       params::Parameters,
+                       prngs::Vector{MersenneTwister},
+                       found::Int=0) where {T<:Real}
     filtered = Int[]
     selected = copy(index)
     N = size(X,1) # full space dimension
@@ -252,10 +250,10 @@ end
 # 2- create distance histograms of the data points to each trial linear manifold
 # 3- of all the linear manifolds sampled select the one whose associated distance histogram
 #    shows the best separation between to modes.
-function find_best_separation{T<:AbstractFloat}(X::Matrix{T}, lm_dim::Int,
+function find_best_separation(X::Matrix{T}, lm_dim::Int,
                               params::Parameters,
                               prngs::Vector{MersenneTwister},
-                              found::Int=0)
+                              found::Int=0) where {T<:Real}
     full_space_dim, data_size = size(X)
 
     LOG(params, 3, "---------------------------------------------------------------------------------")
@@ -302,8 +300,9 @@ function find_best_separation{T<:AbstractFloat}(X::Matrix{T}, lm_dim::Int,
     return best_sep, best_origin, best_basis, Q
 end
 
-function sample_manifold{T<:AbstractFloat}(X::Matrix{T}, lm_dim::Int,
-                        params::Parameters, prng::MersenneTwister, num_samples::Int)
+function sample_manifold(X::Matrix{T}, lm_dim::Int,
+                         params::Parameters, prng::MersenneTwister,
+                         num_samples::Int) where {T<:Real}
     best_sep = Separation()
     best_origin = T[]
     best_basis = zeros(0, 0)
@@ -324,7 +323,7 @@ function sample_manifold{T<:AbstractFloat}(X::Matrix{T}, lm_dim::Int,
     return best_sep, best_origin, best_basis, prng
 end
 
-function calculate_separation{T<:AbstractFloat}(X::Matrix{T}, sample::Vector{Int}, params::Parameters)
+function calculate_separation(X::Matrix{T}, sample::Vector{Int}, params::Parameters) where {T<:Real}
     origin, basis = form_basis(X[:, sample])
     sep = try
         find_separation(X, origin, basis, params)
@@ -340,8 +339,8 @@ function calculate_separation{T<:AbstractFloat}(X::Matrix{T}, sample::Vector{Int
 end
 
 # Find separation criteria
-function find_separation{T<:AbstractFloat}(X::Matrix{T}, origin::Vector{T},
-                        basis::Matrix{T}, params::Parameters)
+function find_separation(X::Matrix{T}, origin::Vector{T},
+                         basis::Matrix{T}, params::Parameters) where {T<:Real}
     # Define sample for distance calculation
     if params.histogram_sampling
         Z_01=2.576  # Z random variable, confidence interval 0.99
@@ -407,14 +406,14 @@ end
 # creating a basis matrix with one less vector than the number of sampled points.
 # Then perform orthogonalization through Gram-Schmidt process.
 # Note: Resulting basis is transposed.
-function form_basis{T<:AbstractFloat}(X::Matrix{T})
+function form_basis(X::Matrix{T}) where {T<:Real}
     origin = X[:,1]
     basis = X[:,2:end] .- origin
     vec(origin), orthogonalize(basis)
 end
 
 # Modified Gram-Schmidt orthogonalization algorithm
-function orthogonalize{T<:AbstractFloat}(vecs::Matrix{T})
+function orthogonalize(vecs::Matrix{T}) where {T<:Real}
     m, n = size(vecs)
     basis = zeros(T, m, n)
     for j = 1:n
@@ -430,7 +429,7 @@ function orthogonalize{T<:AbstractFloat}(vecs::Matrix{T})
     basis
 end
 
-function form_basis_svd{T<:AbstractFloat}(X::Matrix{T})
+function form_basis_svd(X::Matrix{T}) where {T<:Real}
     n = size(X,1)
     origin = mean(X,2)
     vec(origin), svdfact((X.-origin)'/sqrt(n))[:V][:,1:end-1]
@@ -443,7 +442,7 @@ end
 
 # Calculates distance from point to manifold defined by basis
 # Note: point should be translated wrt manifold origin
-function distance_to_manifold{T<:AbstractFloat}(point::Vector{T}, basis::Matrix{T})
+function distance_to_manifold(point::Vector{T}, basis::Matrix{T}) where {T<:Real}
     d_n = 0.0
     d_v = basis' * point
     c = sum(abs2, point)
@@ -462,12 +461,11 @@ function distance_to_manifold{T<:AbstractFloat}(point::Vector{T}, basis::Matrix{
     return d_n
 end
 
-distance_to_manifold{T<:AbstractFloat}(
-    point::Vector{T}, origin::Vector{T}, basis::Matrix{T}) = distance_to_manifold(point - origin, basis)
+distance_to_manifold(point::Vector{T}, origin::Vector{T}, basis::Matrix{T}) where {T<:Real} =
+    distance_to_manifold(point - origin, basis)
 
 # Determine the distance of each point in the dataset from to a linear manifold
-function distance_to_manifold{T<:AbstractFloat}(
-    X::Matrix{T}, origin::Vector{T}, basis::Matrix{T})
+function distance_to_manifold(X::Matrix{T}, origin::Vector{T}, basis::Matrix{T}) where {T<:Real}
 
     N, n = size(X)
     M = size(basis,2)

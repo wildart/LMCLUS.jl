@@ -1,14 +1,9 @@
-my_tests = [
-    "types_test.jl",
-    "kittler_test.jl",
-    "lmclus_test.jl",
-    "lmclus_p_test.jl",
-    "mdl_test.jl"
-]
+using Base.Test
 
-# println("Running tests:")
-
-for my_test in my_tests
-    # println(" * $(my_test)")
-    include(my_test)
+@testset "LMCLUS" begin
+    include("types_test.jl")
+    include("kittler_test.jl")
+    include("lmclus_test.jl")
+    include("lmclus_p_test.jl")
+    include("mdl_test.jl")
 end

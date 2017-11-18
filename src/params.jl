@@ -1,7 +1,7 @@
 import Base.show
 
 "LMCLUS algorithm parameters"
-type Parameters
+mutable struct Parameters
     "Minimum dimension of the cluster"
     min_dim::Int
     "Maximum dimension of the cluster"

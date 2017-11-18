@@ -3,7 +3,7 @@
 #               Automatica, 1975, 11, 285-296.
 using StatsBase
 
-function otsu{T<:AbstractFloat}(xs::Vector{T}; bins = 20, debug = false)
+function otsu(xs::Vector{T}; bins = 20, debug = false) where {T<:Real}
     # find maximum and minimum
     minX, maxX = extrema(xs)
 
@@ -17,7 +17,7 @@ function otsu{T<:AbstractFloat}(xs::Vector{T}; bins = 20, debug = false)
     Separation(varmax, 1., threshold, min_index, collect(r))
 end
 
-function otsu{T<:AbstractFloat}(H::Vector{T}, hrange::AbstractVector{Float64}; debug = false)
+function otsu(H::Vector{T}, hrange::AbstractVector{Float64}; debug = false) where {T<:Real}
     N = length(H)
 
     hsum = sum((1:N).*H)

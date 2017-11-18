@@ -4,16 +4,16 @@ using StatsBase
 import ..LMCLUS: Manifold, indim, outdim, mean, projection, separation, labels
 
 # Various types for MDL calculation
-abstract MethodType
+abstract type MethodType end
 
-type Raw <: MethodType end
-type ZeroDim <: MethodType end
+struct Raw <: MethodType end
+struct ZeroDim <: MethodType end
 
-type Uniform <: MethodType end
-type Gaussian <: MethodType end
-type Empirical <: MethodType end
-type OptimalQuant <: MethodType end    # ICPR-2016 Eq. 6
-type SizeIndependent <: MethodType end # ICPR-2016 Eq. 8
+struct Uniform <: MethodType end
+struct Gaussian <: MethodType end
+struct Empirical <: MethodType end
+struct OptimalQuant <: MethodType end    # ICPR-2016 Eq. 6
+struct SizeIndependent <: MethodType end # ICPR-2016 Eq. 8
 
 # Set default method for MDL calculation
 DefaultType = OptimalQuant

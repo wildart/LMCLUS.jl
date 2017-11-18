@@ -4,7 +4,7 @@ import LMCLUS
 @everywhere using LMCLUS
 using Base.Test
 
-@testset "LMCLUS Parallel" begin
+@testset "Clustering (Parallel)" begin
     @test nprocs() == 2
 
     p = LMCLUS.Parameters(5)
