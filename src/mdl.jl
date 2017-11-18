@@ -19,7 +19,7 @@ struct SizeIndependent <: MethodType end # ICPR-2016 Eq. 8
 DefaultType = OptimalQuant
 
 """Optimal number of bins given constant C over intervals"""
-function optbins{T<:AbstractFloat}(intervals::Vector{T}, C::T)
+function optbins(intervals::Vector{T}, C::T) where T <: Real
     ns = ceil.(intervals * exp( (C - sum(intervals))/length(intervals) ), 0 )
     nsi = zeros(UInt, size(ns))
     for i in 1:length(nsi)
@@ -33,13 +33,13 @@ function optbins{T<:AbstractFloat}(intervals::Vector{T}, C::T)
 end
 
 """Variance of a uniform distribution over interval"""
-univar{T<:AbstractFloat}(interval::Vector{T}) = (1//12)*(interval).^2
+univar(interval::Vector{T}) where T <: Real = (1//12)*(interval).^2
 
 """Quantizaton error"""
 quanterror(intervals, N_k_opt) = sum(univar(intervals./N_k_opt))
 
 """Optimal quantization of the interval"""
-function optquant{T<:AbstractFloat}(intervals::Vector{T}, ɛ::T; tot::Int = 1000, tol=1e-6)
+function optquant(intervals::Vector{T}, ɛ::T; tot::Int = 1000, tol = 1e-6) where T <: Real
     intervals[isnan.(intervals)] = eps() # remove nans
     intervals[intervals .< eps()] = eps() # remove 0s
     intervals[isinf.(intervals)] = 1. # remove inf
@@ -48,7 +48,7 @@ function optquant{T<:AbstractFloat}(intervals::Vector{T}, ɛ::T; tot::Int = 1000
     K = length(intervals)
     C = 0.
     Cmin = 0.
-    Cmax = K*log.(typemax(UInt)./intervals)+sum(log.(intervals)) |> minimum
+    Cmax = broadcast(+, log.(typemax(UInt)./intervals).*K, sum(log.(intervals))) |> minimum
 
     i = 1
     N_k_opt = ones(UInt, K)
@@ -129,8 +129,8 @@ end
     Ref: O. Georgieva, K. Tschumitschew, and F. Klawonn, “Cluster validity
     measures based on the minimum description length principle”
 """
-function datadl{T<:AbstractFloat}(::Type{ZeroDim}, C::Manifold, X::Matrix{T},
-                                  P::Int, ɛ::T, tot::Int, tol::T)
+function datadl(::Type{ZeroDim}, C::Manifold, X::Matrix{T},
+                P::Int, ɛ::T, tot::Int, tol::T) where T <: Real
     N = size(X,1)  # space dimension
     μ = mean(C)    # manifold translation
     n = outdim(C)  # size of cluster
@@ -164,10 +164,10 @@ end
 
     Encodes linear manifold & orthogonal complement space basis vectors
 """
-function modeldl{MT<:MethodType}(::Type{MT}, C::Manifold, X::Matrix, P::Int)
+function modeldl(::Type{MT}, C::Manifold, X::Matrix, P::Int) where MT <: MethodType
     N = size(X,1)  # space dimension
     return if indim(C) != 0
-        P*N*(N+1)>>1
+        (P*N*(N+1))>>1
     else # for 0D manifold no basis encoding required
         P*N
     end
@@ -176,8 +176,8 @@ end
 
 """Size independent data description length: L(X|SI)
 """
-function datadl{T<:AbstractFloat}(::Type{SizeIndependent}, C::Manifold, X::Matrix{T},
-                                  P::Int, ɛ::T, tot::Int, tol::T)
+function datadl(::Type{SizeIndependent}, C::Manifold, X::Matrix{T},
+                P::Int, ɛ::T, tot::Int, tol::T) where T <: Real
     N = size(X,1)  # space dimension
     M = indim(C)   # manifold dimension
     μ = mean(C)    # manifold translation
@@ -197,8 +197,8 @@ end
     Points in the orthogonal complement space of the linear manifold cluster
     are uniformly distributed around the cluster manifold.
 """
-function datadl{T<:AbstractFloat}(::Type{Uniform}, C::Manifold, X::Matrix{T},
-                                  P::Int, ɛ::T, tot::Int, tol::T)
+function datadl(::Type{Uniform}, C::Manifold, X::Matrix{T},
+                P::Int, ɛ::T, tot::Int, tol::T) where T <: Real
     N = size(X,1)  # space dimension
     M = indim(C)   # manifold dimension
     n = outdim(C)  # size of cluster
@@ -219,8 +219,8 @@ end
     Points in the orthogonal complement space of the linear manifold cluster
     are normally distributed around the cluster manifold.
 """
-function datadl{T<:AbstractFloat}(::Type{Gaussian}, C::Manifold, X::Matrix{T},
-                                  P::Int, ɛ::T, tot::Int, tol::T)
+function datadl(::Type{Gaussian}, C::Manifold, X::Matrix{T},
+                P::Int, ɛ::T, tot::Int, tol::T) where T <: Real
     N = size(X,1)  # space dimension
     M = indim(C)   # manifold dimension
     n = outdim(C)  # size of cluster
@@ -249,8 +249,8 @@ end
     constructed by optimal quantizing with a fixed length bin, is used to
     calculate entropy, thus number of bits.
 """
-function datadl{T<:AbstractFloat}(::Type{Empirical}, C::Manifold, X::Matrix{T},
-                                  P::Int, ɛ::T, tot::Int, tol::T)
+function datadl(::Type{Empirical}, C::Manifold, X::Matrix{T},
+                P::Int, ɛ::T, tot::Int, tol::T) where T <: Real
     N = size(X,1)  # space dimension
     M = indim(C)   # manifold dimension
     n = outdim(C)   # manifold cluster size
@@ -288,8 +288,8 @@ end
     constructed by optimal quantizing with a fixed length bin, is used to
     calculate entropy, thus number of bits.
 """
-function datadl{T<:AbstractFloat}(::Type{OptimalQuant}, C::Manifold, X::Matrix{T},
-                                  P::Int, ɛ::T, tot::Int, tol::T)
+function datadl(::Type{OptimalQuant}, C::Manifold, X::Matrix{T},
+                P::Int, ɛ::T, tot::Int, tol::T) where T <: Real
     N = size(X,1)  # space dimension
     M = indim(C)   # manifold dimension
     n = outdim(C)  # size of cluster
@@ -319,16 +319,14 @@ end
 =#
 
 "Calculate MDL for the manifold"
-function calculate{MT<:MethodType, T<:AbstractFloat}(::Type{MT},
-             M::Manifold, X::Matrix{T}, Pm::Int, Pd::Int;
-             ɛ::T=1e-2, tot::Int = 1000, tol=1e-8)
+function calculate(::Type{MT}, M::Manifold, X::Matrix{T}, Pm::Int, Pd::Int;
+                   ɛ::T = 1e-2, tot::Int = 1000, tol = 1e-8) where {MT <: MethodType, T <: Real}
     return modeldl(MT, M, X, Pm) + datadl(MT, M, X, Pd, ɛ, tot, tol)
 end
 
 "Calculate MDL for the clustering"
-function calculate{MT<:MethodType, T<:AbstractFloat}(::Type{MT},
-             Ms::Vector{Manifold}, X::Matrix{T}, Pm::Int, Pd::Int;
-             ɛ::T=1e-2, tot::Int = 1000, tol=1e-8)
+function calculate(::Type{MT}, Ms::Vector{Manifold}, X::Matrix{T}, Pm::Int, Pd::Int;
+             ɛ::T=1e-2, tot::Int = 1000, tol = 1e-8) where {MT <: MethodType, T <: Real}
     return sum([calculate(MT,m,X[:,labels(m)],Pm,Pd,ɛ=ɛ,tot=tot,tol=tol) for m in Ms])
 end
 
@@ -340,13 +338,15 @@ end
 end
 
 # Compatibility
-function mdl{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, Pm::Int, Pd::Int;
-             dist::Symbol = :OptimalQuant, ɛ::T=1e-2, tot::Int = 1000, tol=1e-8)
+function mdl(M::Manifold, X::Matrix{T}, Pm::Int, Pd::Int;
+             dist::Symbol = :OptimalQuant, ɛ::T = 1e-2,
+             tot::Int = 1000, tol = 1e-8) where T <: Real
     mdltype = eval(MDL, dist)
     return MDL.calculate(mdltype, M, X, Pm, Pd, ɛ=ɛ)
 end
 
-function mdl{T<:AbstractFloat}(Ms::Vector{Manifold}, X::Matrix{T}, Pm::Int, Pd::Int;
-            dist::Symbol = :OptimalQuant, ɛ::T=1e-2, tot::Int = 1000, tol=1e-8)
+function mdl(Ms::Vector{Manifold}, X::Matrix{T}, Pm::Int, Pd::Int;
+             dist::Symbol = :OptimalQuant, ɛ::T = 1e-2,
+             tot::Int = 1000, tol = 1e-8) where T <: Real
     return sum([mdl(m,X,Pm,Pd,dist=dist,ɛ=ɛ,tot=tot,tol=tol) for m in Ms])
 end

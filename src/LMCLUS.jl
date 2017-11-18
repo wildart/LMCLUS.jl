@@ -36,7 +36,7 @@ function lmclus(X::Matrix{T}, params::Parameters, np::Int=nprocs()) where {T<:Re
     mts = if np == 1
         [MersenneTwister(seed)]
     else
-        isdefined(:randjump) ? randjump(MersenneTwister(seed), np) : [MersenneTwister(seed+10*i) for i in 1:np]
+        randjump(MersenneTwister(seed), np)
     end
     return lmclus(X, params, mts)
 end

@@ -28,7 +28,7 @@ Sample randomly lm_dim+1 points from the dataset, making sure
 that the same point is not sampled twice. the function will return
 a index vector, specifying the index of the sampled points.
 """
-function sample_points{T<:AbstractFloat}(X::Matrix{T}, n::Int)
+function sample_points(X::Matrix{T}, n::Int) where T <: Real
     if n <= 0
         error("Sample size must be positive")
     end
@@ -77,7 +77,7 @@ function sample_points{T<:AbstractFloat}(X::Matrix{T}, n::Int)
 end
 
 """Reservoir sampling"""
-function sample_points{T<:AbstractFloat}(X::Matrix{T}, k::Int, r::MersenneTwister)
+function sample_points(X::Matrix{T}, k::Int, r::MersenneTwister) where T <: Real
     N, n = size(X)
     if n < k
         warn("Not enough samples to construct manifold")
@@ -164,7 +164,7 @@ function V_measure(A::Matrix; β = 1.0)
 end
 
 "Fast histogram calculation"
-function histogram{T<:AbstractFloat}(V::Vector{T}, edgs)
+function histogram(V::Vector{T}, edgs) where T <: Real
     n = length(edgs)-1
     counts = zeros(Int32,n)
     cindex = zeros(UInt32,length(V))
@@ -199,7 +199,7 @@ function assignments(Ms::Vector{Manifold})
 end
 
 "Projection of the data to the manifold"
-function project{T<:AbstractFloat}(m::Manifold, X::Matrix{T})
+function project(m::Manifold, X::Matrix{T}) where T <: Real
     proj = projection(m)'*(X.-mean(m))
     return proj
 end
@@ -223,7 +223,7 @@ function filter_separeted(selected_points, X, O, B, S)
     return cluster_points, removed_points
 end
 
-function adjustbasis!{T<:AbstractFloat}(M::Manifold, X::Matrix{T}, P::LMCLUS.Parameters)
+function adjustbasis!(M::Manifold, X::Matrix{T}, P::LMCLUS.Parameters) where T <: Real
     R = if indim(M) > 0 && !P.dim_adjustment
         fit(PCA, X[:, labels(M)]; maxoutdim=indim(M)) # method=:svd,
     else
