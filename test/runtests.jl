@@ -1,6 +1,7 @@
 using Base.Test
 
 @testset "LMCLUS" begin
+    include("utils_test.jl")
     include("types_test.jl")
     include("kittler_test.jl")
     include("lmclus_test.jl")

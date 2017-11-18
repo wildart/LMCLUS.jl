@@ -402,40 +402,6 @@ function sample_quantity(k::Int, full_space_dim::Int, data_size::Int,
     num_samples
 end
 
-# Forming basis from sample. The idea is to pick a point (origin) from the sampled points
-# and generate the basis vectors by subtracting all other points from the origin,
-# creating a basis matrix with one less vector than the number of sampled points.
-# Then perform orthogonalization through Gram-Schmidt process.
-# Note: Resulting basis is transposed.
-function form_basis(X::Matrix{T}) where {T<:Real}
-    origin = X[:,1]
-    basis = X[:,2:end] .- origin
-    vec(origin), orthogonalize(basis)
-end
-
-# Modified Gram-Schmidt orthogonalization algorithm
-function orthogonalize(vecs::Matrix{T}) where {T<:Real}
-    m, n = size(vecs)
-    basis = zeros(T, m, n)
-    for j = 1:n
-        v_j = vecs[:,j]
-        for i = 1:(j-1)
-            q_i = basis[:,i]
-            r_ij = dot(q_i, v_j)
-            v_j -= q_i*r_ij
-        end
-        r_jj = norm(v_j)
-        basis[:,j] = r_jj != 0.0 ? v_j/r_jj : v_j
-    end
-    basis
-end
-
-function form_basis_svd(X::Matrix{T}) where {T<:Real}
-    n = size(X,1)
-    origin = mean(X,2)
-    vec(origin), svdfact((X.-origin)'/sqrt(n))[:V][:,1:end-1]
-end
-
 # Calculate histogram size
 function hist_bin_size(xs::Vector, params::Parameters)
     return params.hist_bin_size == 0 ? (round(Int, length(xs) * params.max_bin_portion)) : params.hist_bin_size
