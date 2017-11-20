@@ -4,6 +4,7 @@ using Base.Test
 
 @testset "Thresholding" begin
 
+	srand(283739285)
 	N = 5000
 	bins = 100
 	generate_sample(N, μ1, σ1, μ2, σ2) = vcat(rand(Normal(μ1,σ1), N),rand(Normal(μ2,σ2), N))
@@ -15,22 +16,22 @@ using Base.Test
 	# Test 1
 	res = kittler(generate_sample(N, 50, 15, 150, 15), bins=bins)
 	# println("Threshold: ", threshold(res))#, " (",res[5],")")
-	@test threshold(res) ≈ 102.0 atol=5
+	@test threshold(res) ≈ 100.0 atol=1.0
 
 	# Test 2
 	res = kittler(generate_sample(N, 38, 9, 121, 44), bins=bins)
 	# println("Threshold: ", threshold(res))#, " (",res[5],")")
-	@test threshold(res) ≈ 65.0 atol=5
+	@test threshold(res) ≈ 64.0 atol=1.0
 
 	# Test 3
 	res = kittler(generate_sample(N, 47, 13, 144, 25), bins=bins)
 	# println("Threshold: ", threshold(res))#, " (",res[5],")")
-	@test threshold(res) ≈ 85.0 atol=5
+	@test threshold(res) ≈ 84.0 atol=1.0
 
 	# Test 4
 	res = kittler(generate_sample(N, 50, 4, 150, 30), bins=bins)
 	# println("Threshold: ", threshold(res))#, " (",res[5],")")
-	@test threshold(res) ≈ 64.0 atol=5
+	@test threshold(res) ≈ 64.0 atol=1.
 
 	# Try unimodal histogram
 	@test_throws LMCLUS.LMCLUSException kittler(rand(Normal(1, 10), N), bins=10)
