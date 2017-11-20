@@ -9,24 +9,27 @@ function otsu(xs::Vector{T}; bins = 20, debug = false) where {T<:Real}
 
     # get normalized histogram
     r = linspace(minX, maxX, bins+1)
-    H = fit(Histogram, xs, r)
+    H = fit(Histogram, xs, r, closed=:left)
     Hw = H.weights
-    Hn = Hw/convert(T, length(xs)-1)
+    Hn = Hw./convert(T, length(xs)-1)
 
     threshold, min_index, varmax = otsu(Hn, r, debug=debug)
-    Separation(varmax, 1., threshold, min_index, collect(r))
+    mv1 = mean_and_var(Hn[Hn.<=threshold])
+    mv2 = mean_and_var(Hn[Hn.>threshold])
+    discriminability = (abs(mv1[1]-mv2[1]))/(sqrt(mv1[2]+mv2[2]))
+    Separation(varmax, discriminability, threshold, min_index, collect(r))
 end
 
 function otsu(H::Vector{T}, hrange::AbstractVector{Float64}; debug = false) where {T<:Real}
     N = length(H)
 
     hsum = sum((1:N).*H)
-    bsum = 0.
-    bw = 1
-    fw = 1
-    varmax = 0.
+    bsum = 0.0
+    bw = 0.0
+    fw = 0.0
+    varmax = 0.0
     thr = 1
-    total = N
+    total = sum(H)
 
     for t in 1:N
         bw += H[t] # Weight background
@@ -40,7 +43,6 @@ function otsu(H::Vector{T}, hrange::AbstractVector{Float64}; debug = false) wher
         end
 
         bsum += t * H[t]
-
         bm = bsum/bw # Mean background
         fm = (hsum - bsum)/fw # Mean foreground
 
