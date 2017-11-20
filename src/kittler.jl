@@ -10,19 +10,17 @@ function kittler(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug = false) where {T
     # get normalized histogram
     r = linspace(minX,maxX,bins+1)
     H = fit(Histogram, xs, r, closed=:left)
-    Hw = H.weights
-    Hn = Hw/convert(T, length(xs)-1)
 
-    depth, discriminability, threshold, min_index, criterion_func = kittler(Hn, minX, maxX, tol=tol, debug=debug)
+    depth, discriminability, threshold, min_index, criterion_func = kittler(H.weights, length(xs)-1, minX, maxX, tol=tol, debug=debug)
     # depth, discriminability, threshold, min_index, r, c
     Separation(depth, discriminability, threshold, min_index, collect(r))
 end
 
-function kittler(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5, debug = false) where {T<:Real}
+function kittler(H::Vector{Int}, n::Int, minX::T, maxX::T; tol=1.0e-5, debug = false) where {T<:Real}
     N = length(H)
 
     # calculate stats
-    S = origstats(H)
+    S = recurstats(H, n)
 
     # Compute criterion function
     J = fill(-Inf, N-1)
