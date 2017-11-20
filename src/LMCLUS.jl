@@ -5,7 +5,7 @@ import Clustering: ClusteringResult, assignments, counts, nclusters
 
 export  lmclus,
 
-        kittler, otsu,
+        separation,
         distance_to_manifold,
 
         Manifold,
@@ -65,6 +65,7 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
 
     # Main loop through dataset
     while length(index) > params.min_cluster_size
+
         # Find one manifold
         best_manifold, best_separation, remains = find_manifold(X, index, params, prngs, length(manifolds))
 
@@ -346,8 +347,7 @@ function find_separation(X::AbstractMatrix, origin::AbstractVector,
                                      origin, basis, ocss = ocss)
     # define histogram size
     bins = hist_bin_size(distances, params)
-    # find separation of the distance histogram
-    return kittler(distances, bins=bins, debug=debug)
+    return separation(LMCLUS.Kittler, distances, bins=bins)
 end
 
 # Determine the number of times to sample the data in order to guaranty
