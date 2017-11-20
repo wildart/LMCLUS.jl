@@ -179,3 +179,91 @@ function adjustbasis!(M::Manifold, X::Matrix{T}, P::LMCLUS.Parameters) where T <
     M.proj = MultivariateStats.projection(R)
     return M
 end
+
+function origstats(H::Vector{T}) where T <: Real
+    N = length(H)
+
+    # calculate threshold
+    S = zeros(N,6)
+
+    # recursive defintions
+    S[1,1] = H[1]
+    S[N-1,2] = H[N]
+    S[1,3] = 1.0
+    S[N-1,4] = (H[N] == 0 ? 0 : N-1)
+    S[1,5] = 0
+    S[N-1,6] = 0
+    i = 2
+    j = N-2
+    while i <= N-1
+        S[i,1] = S[i-1,1] + H[i]
+        if S[i,1] != 0
+            S[i,3] = ((S[i-1,3] * S[i-1,1]) + ((i-1) * H[i])) / S[i,1]
+            S[i,5] = (S[i-1,1] *
+                       (S[i-1,5] + (S[i-1,3]-S[i,3]) * (S[i-1,3]-S[i,3])) +
+                        H[i] * ((i-1) - S[i,3]) * ((i-1) - S[i,3]) ) / S[i,1]
+        end
+
+        S[j,2] = S[j+1,2] + H[j+1]
+        if S[j+1,2] != 0
+            S[j,4] = ((S[j+1,4] * S[j+1,2]) + (j * H[j+1])) / S[j,2]
+            S[j,6] = (S[j+1,2] *
+                       (S[j+1,6] + (S[j+1,4]-S[j,4]) * (S[j+1,4]-S[j,4])) +
+                        H[j+1] * (j - S[j,4]) * (j - S[j,4]) ) / S[j,2]
+        end
+
+        i += 1
+        j -= 1
+    end
+
+    return S
+end
+
+function refstats(H::Vector{T}) where T <: Real
+    x = 1:length(H)
+	A=cumsum(H)
+	B=cumsum(H.*x)
+	C=cumsum(H.*x.^2)
+
+	p=A./A[end]
+	q=(A[end] .- A)./A[end]
+
+	u=B./A
+	v=(B[end] .- B)./(A[end] .- A)
+
+	s2=C./A - u.^2
+    t2=(C[end] .- C)./(A[end]-A) - v.^2
+
+	return hcat(p, q, u, v, s2, t2)
+end
+
+function recurstats(H::Vector{T}, n::Int) where T <: Real
+    N = length(H)
+    S = zeros(N,6)
+
+    S[1, 1] = H[1]/n
+    S[1, 3] = 1.0
+    S[1, 2] = 1.0 - S[1, 1]
+    S[N-1, 2] = H[N]/n
+    S[N-1, 4] = N
+    j = N
+    for i in 2:N
+        P = H[i]/n
+        S[i, 1] = S[i-1, 1] + P
+        A = S[i-1, 1]*n
+        if (A + H[i]) != 0
+            S[i, 3] = (S[i-1, 3]*A + H[i]*i)/(A + H[i])
+            S[i, 5] = ((S[i-1, 5] + S[i-1, 3]*S[i-1, 3])*A + H[i]*i*i)/(A + H[i]) - S[i, 3]*S[i, 3]
+        end
+
+        S[j-1, 2] = S[j, 2] + H[j]/n
+        ΔA = S[j-1, 2]*n
+        if ΔA != 0
+            S[j-1, 4] = (S[j, 4]*S[j, 2]*n + H[j]*j)/ΔA
+            S[j-1, 6] = ((S[j, 6] + S[j, 4]*S[j, 4])*S[j, 2]*n + H[j]*j*j)/ΔA - S[j-1, 4]*S[j-1, 4]
+        end
+        j -= 1
+    end
+
+	return S
+end

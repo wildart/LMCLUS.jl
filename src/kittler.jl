@@ -5,8 +5,7 @@ using StatsBase
 
 function kittler(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug = false) where {T<:Real}
     # find maximum and minimum
-    maxX = maximum(xs)
-    minX = minimum(xs)
+    minX, maxX = extrema(xs)
 
     # get normalized histogram
     r = linspace(minX,maxX,bins+1)
@@ -22,49 +21,14 @@ end
 function kittler(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5, debug = false) where {T<:Real}
     N = length(H)
 
-    # calculate threshold
-    P1 = zeros(T, N)
-    P2 = zeros(T, N)
-    Mu1 = zeros(T, N)
-    Mu2 = zeros(T, N)
-    Var1 = zeros(T, N)
-    Var2 = zeros(T, N)
-
-    # recursive defintions
-    P1[1] = H[1]
-    P2[N-1] = H[N]
-    Mu1[1] = 0
-    Mu2[N-1] = (H[N] == 0 ? 0 : N-1)
-    Var1[1] = 0
-    Var2[N-1] = 0
-    i = 2
-    j = N-2
-    while i <= N-1
-        P1[i] = P1[i-1] + H[i]
-        if P1[i] != 0
-            Mu1[i] = ((Mu1[i-1] * P1[i-1]) + ((i-1) * H[i])) / P1[i]
-            Var1[i]= (P1[i-1] *
-                        (Var1[i-1] + (Mu1[i-1]-Mu1[i]) * (Mu1[i-1]-Mu1[i])) +
-                        H[i] * ((i-1) - Mu1[i]) * ((i-1) - Mu1[i]) ) / P1[i]
-        end
-
-        P2[j] = P2[j+1] + H[j+1]
-        if P2[j+1] != 0
-            Mu2[j] = ((Mu2[j+1] * P2[j+1]) + (j * H[j+1])) / P2[j]
-            Var2[j]= (P2[j+1] *
-                        (Var2[j+1] + (Mu2[j+1]-Mu2[j]) * (Mu2[j+1]-Mu2[j])) +
-                        H[j+1] * (j - Mu2[j]) * (j - Mu2[j]) ) / P2[j]
-        end
-
-        i += 1
-        j -= 1
-    end
+    # calculate stats
+    S = origstats(H)
 
     # Compute criterion function
     J = fill(-Inf, N-1)
     for t=1:(N-1)
-        if P1[t]!=0 && P2[t]!=0
-            J[t] = 1 + 2*(P1[t]*log(sqrt(Var1[t])) + P2[t]*log(sqrt(Var2[t]))) - 2*(P1[t]*log(P1[t]) + P2[t]*log(P2[t]))
+        if S[t,1]!=0 && S[t,2]!=0
+            J[t] = 1 + 2*(S[t,1]*log(sqrt(S[t,5])) + S[t,2]*log(sqrt(S[t,6]))) - 2*(S[t,1]*log(S[t,1]) + S[t,2]*log(S[t,2]))
         end
     end
     debug && println("H: $(H)")
@@ -74,7 +38,7 @@ function kittler(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5, debug = false) whe
     depth, global_min = find_global_min(J, tol)
     min_index = round(Int, global_min)
     threshold = minX + ( global_min * (maxX - minX) / N )
-    discriminability = (abs(Mu1[min_index]-Mu2[min_index]))/(sqrt(Var1[min_index]+Var2[min_index]))
+    discriminability = (abs(S[min_index,3]-S[min_index,4]))/(sqrt(S[min_index,5]+S[min_index,6]))
 
     depth, discriminability, threshold, min_index, J
 end
