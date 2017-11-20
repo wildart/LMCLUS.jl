@@ -4,7 +4,7 @@ import MultivariateStats: MultivariateStats, PCA, fit, principalratio, indim, ou
 
 export  lmclus,
 
-        kittler, otsu,
+        separation,
         distance_to_manifold,
 
         criteria,
@@ -85,7 +85,7 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
                 Z = project(best_manifold, X[:,L]) |> vec
                 # determine separation parameters
                 ZDsep = try
-                    kittler(Z)
+                    separation(LMCLUS.Kittler, Z)
                 catch ex
                     if isa(ex, LMCLUSException)
                         LOG(params, 5, ex.msg)
@@ -363,7 +363,7 @@ function find_separation(X::Matrix{T}, origin::Vector{T},
     distances = distance_to_manifold(params.histogram_sampling ? X[:,sampleIndex] : X , origin, basis)
     # Define histogram size
     bins = hist_bin_size(distances, params)
-    return kittler(distances, bins=bins)
+    return separation(LMCLUS.Kittler, distances, bins=bins)
 end
 
 # Determine the number of times to sample the data in order to guaranty
