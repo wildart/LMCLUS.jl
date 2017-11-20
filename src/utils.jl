@@ -345,4 +345,31 @@ function find_global_min(J::Vector{T}, tol::T) where {T<:Real}
     end
 
     depth, global_min
+function distances(M::Manifold, X::Matrix{T}) where T <: Real
+    return distance_to_manifold(X[:,labels(M)], mean(M), projection(M))
+end
+
+function boundaries(M::Manifold, X::Matrix, ibp = 0.1, ebp = 0.1)
+    D = distance_to_manifold(X, mean(M), projection(M))
+    L = labels(M)
+    csize = length(L)
+    n = size(X,2)
+
+    # calculate internal boundary quantile (w.r.t. cluster size)
+    interior_boundary = Int[]
+    if ibp > 0.0
+        cps = sortperm(D[L], rev=true)[1:ceil(Int, ibp*csize)]
+        interior_boundary = L[cps]
+    end
+
+    # calculate external boundary quantile (w.r.t. cluster size)
+    exterior_boundary = Int[]
+    if ebp > 0.0
+        bsize = min(n-csize, ceil(Int, ebp*csize))
+        K = symdiff(1:n, L)
+        cps = sortperm(D[K])[1:bsize]
+        exterior_boundary = K[cps]
+    end
+
+    return interior_boundary, exterior_boundary
 end
