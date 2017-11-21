@@ -92,4 +92,10 @@ using Combinatorics
 	p.bounded_cluster = false
 	p.basis_alignment = false
 
+	# Otsu
+	p.sep_algo = LMCLUS.Otsu
+	manifolds = lmclus(data,p)
+	@test length(manifolds) >= 3
+	p.sep_algo = LMCLUS.Kittler
+
 end

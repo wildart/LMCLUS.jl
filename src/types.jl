@@ -1,6 +1,9 @@
+"""Abstract histogram thresholding algorithm type"""
+abstract type Thresholding end
+
 ## histogram separation type
 "Cluster separation parameters"
-mutable struct Separation
+struct Separation
     "Separation depth (depth between separated histogram modes)"
     depth::Float64
     "Separation discriminability (width between separated histogram modes)"

@@ -48,6 +48,8 @@ mutable struct Parameters
     mdl_compres_ratio::Float64
     "Enable creation of bounded linear manifold clusters"
     bounded_cluster::Bool
+    "Separation threshold algorithm"
+    sep_algo::DataType
     "Log level (0-5)"
     log_level::Int
 
@@ -75,6 +77,7 @@ mutable struct Parameters
         0.001,    # mdl_quant_error
         1.05,     # mdl_compres_ratio
         false,    # bounded_cluster
+        Kittler,  # sep_algo
         0         # log_level
     )
 end
@@ -104,6 +107,7 @@ show(io::IO, p::Parameters) =
     MDL quantizing error (mdl_quant_error): $(p.mdl_quant_error)
     MDL compression ratio threshold (mdl_compres_ratio): $(p.mdl_compres_ratio)
     Creation of bounded linear manifold clusters (bounded_cluster): $(p.bounded_cluster)
+    Separation algorithm (sep_algo): $(p.sep_algo)
     Log level (log_level): $(p.log_level)""")
 
 # Logger

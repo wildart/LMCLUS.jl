@@ -1,8 +1,5 @@
 using StatsBase
 
-"""Abstract histogram thresholding algorithm type"""
-abstract type Thresholding end
-
 """Perform the dataset `xs` separation by thresholding a dataset `bins`ed histogram based on the algorith `T`"""
 function separation(::Type{T}, xs::Vector{S};
                     bins = 20, tol = 1.0e-5,
