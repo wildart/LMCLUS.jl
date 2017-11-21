@@ -135,11 +135,12 @@ end
 """Otsu algorith thresholding type"""
 struct Otsu <: Thresholding
     statistics::Matrix{Float64}
+    depth::Float64
     minindex::Int
 end
-depth(t::Otsu) = 1.0
-stats(t::Otsu) = t.statistics
-Base.minimum(t::Otsu) = t.minindex
+depth(t::LMCLUS.Otsu) = t.depth
+stats(t::LMCLUS.Otsu) = t.statistics
+Base.minimum(t::LMCLUS.Otsu) = t.minindex
 
 """Performs Otsu thresholding algorithm
 
@@ -149,16 +150,18 @@ function fit(::Type{Otsu}, H::Vector{Int}, n::Int; tol=1.0e-5)
     N = length(H)
 
     # calculate stats
-    S = LMCLUS.recurstats(H, n)
+    S = recurstats(H, n)
 
-    varmax = 0.0
-    thr = 0
+    # Compute criterion function
+    J = zeros(N)
     for t in 1:N
-        btwvar = S[t,1]*S[t,2]*(S[t,4]-S[t,3])^2
-        if btwvar > varmax
-            varmax = btwvar
-            thr = t
-        end
+        varb = S[t,1]*S[t,2]*(S[t,4]-S[t,3])^2
+        varw = S[t,1]*S[t,5] - S[t,2]*S[t,6]
+        J[t] = varb/varw
     end
-    return Otsu(S, thr)
+
+    # Global minimum parameters
+    depth, global_min = find_global_min(J, tol)
+
+    return Otsu(S, depth, round(Int, global_min))
 end
