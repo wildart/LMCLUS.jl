@@ -81,4 +81,14 @@ using Combinatorics
 	@test length(manifolds) >= 3
 	p.mdl = false
 
+	# 0D manifold search
+	p.zero_d_search = true
+	p.max_dim = 1
+	p.basis_alignment = false
+	manifolds = lmclus(data,p)
+	@test length(manifolds) >= 3
+	p.zero_d_search = false
+	p.basis_alignment = true
+	p.max_dim = 5
+
 end
