@@ -91,4 +91,10 @@ using Combinatorics
 	p.basis_alignment = true
 	p.max_dim = 5
 
+	# Otsu
+	p.sep_algo = LMCLUS.Otsu
+	manifolds = lmclus(data,p)
+	@test length(manifolds) >= 3
+	p.sep_algo = LMCLUS.Kittler
+
 end

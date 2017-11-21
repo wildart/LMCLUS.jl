@@ -64,7 +64,7 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
         # Perform basis alignment through PCA on found cluster
         params.basis_alignment && adjustbasis!(best_manifold, X, params)
 
-        # Perform dimensioality regression
+        # Perform dimensionality regression
         if params.zero_d_search && indim(best_manifold) <= 1
             LOG(params, 3, "Searching zero dimensional manifolds...")
 

@@ -1,8 +1,5 @@
 using StatsBase
 
-"""Abstract histogram thresholding algorithm type"""
-abstract type Thresholding end
-
 """Perform the dataset `xs` separation by thresholding a dataset `bins`ed histogram based on the algorith `T`"""
 function separation(::Type{T}, xs::Vector{S};
                     bins = 20, tol = 1.0e-5,
@@ -21,7 +18,7 @@ function separation(::Type{T}, xs::Vector{S};
     threshold = minX + ( midx * (maxX - minX) / N )
     discriminability = (abs(s[midx,3]-s[midx,4]))/(sqrt(s[midx,5]+s[midx,6]))
 
-    return Separation(depth(thresh), discriminability, threshold, midx, Float64[])
+    return Separation(depth(thresh), discriminability, threshold, midx)
 end
 
 """Kittler algorithm thresholding type"""

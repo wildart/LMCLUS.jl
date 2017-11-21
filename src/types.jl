@@ -1,6 +1,9 @@
+"""Abstract histogram thresholding algorithm type"""
+abstract type Thresholding end
+
 ## histogram separation type
 "Cluster separation parameters"
-mutable struct Separation
+struct Separation
     "Separation depth (depth between separated histogram modes)"
     depth::Float64
     "Separation discriminability (width between separated histogram modes)"
@@ -9,10 +12,8 @@ mutable struct Separation
     threshold::Float64
     "Global minimum as histogram bin index"
     globalmin::Int
-    "Histogram ranges"
-    hist_range::Vector{Float64}
 end
-Separation() = Separation(-Inf, eps(), Inf, -1, Float64[])
+Separation() = Separation(-Inf, eps(), Inf, -1)
 
 # properties
 "Returns separation criteria value which is product of depth and discriminability."

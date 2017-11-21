@@ -26,8 +26,7 @@ using Distributions
                         D::Symbol = :Uniform;  σs::Vector{Float64} = ones(N))
             @assert size(bounds) == (N,2) "Define bounds for every dimension"
             @assert size(B) == (N,M) "Define bounds for every dimension"
-            S = LMCLUS.Separation()
-            S.threshold = θ
+            S = LMCLUS.Separation(-Inf, eps(), θ, -1)
             manifold = Manifold(M, zeros(N), B, round.(Int, linspace(1, C, C)), S)
 
             c = 1
