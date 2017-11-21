@@ -22,8 +22,7 @@ export  lmclus,
 include("types.jl")
 include("params.jl")
 include("utils.jl")
-include("kittler.jl")
-include("otsu.jl")
+include("separation.jl")
 include("mdl.jl")
 include("deprecates.jl")
 
