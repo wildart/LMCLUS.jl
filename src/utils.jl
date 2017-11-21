@@ -295,3 +295,73 @@ function recurstats(H::Vector{T}, n::Int) where T <: Real
 
 	return S
 end
+
+function find_global_min(J::Vector{T}, tol::T) where {T<:Real}
+    N = length(J)
+
+    # Mark minima
+    M = zeros(Bool,N)
+    if N-1 >= 1
+        prev = J[2] - J[1]
+        curr = 0.0
+        for i=2:(N-1)
+            curr = J[i+1] - J[i]
+            M[i] = prev<=0 && curr>=0
+            prev=curr
+        end
+    end
+
+    # Find global minima of criterion funtion if exists
+    # find first minimum
+    lmin = 1
+    while lmin<N && !M[lmin]
+        lmin += 1
+    end
+
+    depth = 0
+    global_min = 0
+    if lmin == N
+        throw(LMCLUSException("No minimum found, unimode histogram"))
+    else
+        while lmin < N
+            # Detect flat
+            rmin = lmin
+            while rmin<N && M[rmin]
+                rmin += 1
+            end
+            loc_min=( lmin + rmin - 1 ) / 2
+
+            # Monotonically ascend to the left
+            lheight = round(Int, loc_min)
+            while lheight > 1 && J[lheight-1] >= J[lheight]
+                lheight -= 1
+            end
+
+            # Monotonically ascend to the right
+            rheight = round(Int, loc_min)
+            while rheight < N && J[rheight] <= J[rheight+1]
+                rheight += 1
+            end
+
+            # Compute depth
+            local_depth = 0
+            local_depth = (J[lheight] < J[rheight] ? J[lheight] : J[rheight]) - J[round(Int, loc_min)]
+
+            if local_depth > depth
+                depth = local_depth
+                global_min = loc_min
+            end
+
+            lmin = rmin
+            while lmin<N && !M[lmin]
+                lmin += 1
+            end
+        end
+    end
+
+    if depth < tol
+        throw(LMCLUSException("No minimum found, unimode histogram"))
+    end
+
+    depth, global_min
+end
