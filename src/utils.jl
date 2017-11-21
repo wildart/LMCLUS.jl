@@ -180,64 +180,8 @@ function adjustbasis!(M::Manifold, X::Matrix{T}, P::LMCLUS.Parameters) where T <
     return M
 end
 
-function origstats(H::Vector{T}) where T <: Real
-    N = length(H)
-
-    # calculate threshold
-    S = zeros(N,6)
-
-    # recursive defintions
-    S[1,1] = H[1]
-    S[N-1,2] = H[N]
-    S[1,3] = 1.0
-    S[N-1,4] = (H[N] == 0 ? 0 : N-1)
-    S[1,5] = 0
-    S[N-1,6] = 0
-    i = 2
-    j = N-2
-    while i <= N-1
-        S[i,1] = S[i-1,1] + H[i]
-        if S[i,1] != 0
-            S[i,3] = ((S[i-1,3] * S[i-1,1]) + ((i-1) * H[i])) / S[i,1]
-            S[i,5] = (S[i-1,1] *
-                       (S[i-1,5] + (S[i-1,3]-S[i,3]) * (S[i-1,3]-S[i,3])) +
-                        H[i] * ((i-1) - S[i,3]) * ((i-1) - S[i,3]) ) / S[i,1]
-        end
-
-        S[j,2] = S[j+1,2] + H[j+1]
-        if S[j+1,2] != 0
-            S[j,4] = ((S[j+1,4] * S[j+1,2]) + (j * H[j+1])) / S[j,2]
-            S[j,6] = (S[j+1,2] *
-                       (S[j+1,6] + (S[j+1,4]-S[j,4]) * (S[j+1,4]-S[j,4])) +
-                        H[j+1] * (j - S[j,4]) * (j - S[j,4]) ) / S[j,2]
-        end
-
-        i += 1
-        j -= 1
-    end
-
-    return S
-end
-
-function refstats(H::Vector{T}) where T <: Real
-    x = 1:length(H)
-	A=cumsum(H)
-	B=cumsum(H.*x)
-	C=cumsum(H.*x.^2)
-
-	p=A./A[end]
-	q=(A[end] .- A)./A[end]
-
-	u=B./A
-	v=(B[end] .- B)./(A[end] .- A)
-
-	s2=C./A - u.^2
-    t2=(C[end] .- C)./(A[end]-A) - v.^2
-
-	return hcat(p, q, u, v, s2, t2)
-end
-
-function recurstats(H::Vector{T}, n::Int) where T <: Real
+"Calculate statistics for (bimodal) histogram"
+function histstats(H::Vector{T}, n::Int) where T <: Real
     N = length(H)
     S = zeros(N,6)
 
@@ -266,4 +210,74 @@ function recurstats(H::Vector{T}, n::Int) where T <: Real
     end
 
 	return S
+end
+
+function find_global_min(J::Vector{T}, tol::T) where {T<:Real}
+    N = length(J)
+
+    # Mark minima
+    M = zeros(Bool,N)
+    if N-1 >= 1
+        prev = J[2] - J[1]
+        curr = 0.0
+        for i=2:(N-1)
+            curr = J[i+1] - J[i]
+            M[i] = prev<=0 && curr>=0
+            prev=curr
+        end
+    end
+
+    # Find global minima of criterion funtion if exists
+    # find first minimum
+    lmin = 1
+    while lmin<N && !M[lmin]
+        lmin += 1
+    end
+
+    depth = 0
+    global_min = 0
+    if lmin == N
+        throw(LMCLUSException("No minimum found, unimode histogram"))
+    else
+        while lmin < N
+            # Detect flat
+            rmin = lmin
+            while rmin<N && M[rmin]
+                rmin += 1
+            end
+            loc_min=( lmin + rmin - 1 ) / 2
+
+            # Monotonically ascend to the left
+            lheight = round(Int, loc_min)
+            while lheight > 1 && J[lheight-1] >= J[lheight]
+                lheight -= 1
+            end
+
+            # Monotonically ascend to the right
+            rheight = round(Int, loc_min)
+            while rheight < N && J[rheight] <= J[rheight+1]
+                rheight += 1
+            end
+
+            # Compute depth
+            local_depth = 0
+            local_depth = (J[lheight] < J[rheight] ? J[lheight] : J[rheight]) - J[round(Int, loc_min)]
+
+            if local_depth > depth
+                depth = local_depth
+                global_min = loc_min
+            end
+
+            lmin = rmin
+            while lmin<N && !M[lmin]
+                lmin += 1
+            end
+        end
+    end
+
+    if depth < tol
+        throw(LMCLUSException("No minimum found, unimode histogram"))
+    end
+
+    depth, global_min
 end
