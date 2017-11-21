@@ -32,4 +32,26 @@ using Base.Test
 	# Try unimodal histogram
 	@test_throws LMCLUS.LMCLUSException separation(LMCLUS.Kittler, rand(Normal(1, 10), N), bins=10)
 
+	## Otsu ##
+	# Test 1
+	res = separation(LMCLUS.Otsu, generate_sample(N, 50, 15, 150, 15), bins=bins)
+	@test threshold(res) ≈ 99.0 atol=1.0
+
+	# Test 2
+	res = separation(LMCLUS.Otsu, generate_sample(N, 38, 9, 121, 44), bins=bins)
+	@test threshold(res) ≈ 91.0 atol=1.0
+
+	# Test 3
+	res = separation(LMCLUS.Otsu, generate_sample(N, 47, 13, 144, 25), bins=bins)
+	@test threshold(res) ≈ 97.0 atol=1.0
+
+	# Test 4
+	res = separation(LMCLUS.Otsu, generate_sample(N, 50, 4, 150, 30), bins=bins)
+	@test threshold(res) ≈ 103.0 atol=1.
+
+	# Try unimodal histogram
+	res = separation(LMCLUS.Otsu, rand(Normal(1, 10), N), bins=10)
+	println(threshold(res))
+	@test threshold(res) ≈ 0.0 atol=1.
+
 end

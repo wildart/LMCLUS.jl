@@ -10,7 +10,7 @@ function separation(::Type{T}, xs::Vector{S};
     minX, maxX = extrema(xs)
 
     # get histogram
-    r = linspace(minX,maxX,bins+1)
+    r = linspace(minX, maxX, bins+1)
     H = fit(Histogram, xs, r, closed=:left)
     N = length(H.weights)
 
@@ -137,6 +137,28 @@ struct Otsu <: Thresholding
     statistics::Matrix{Float64}
     minindex::Int
 end
-depth(t::Otsu) = t.depth
+depth(t::Otsu) = 1.0
 stats(t::Otsu) = t.statistics
 Base.minimum(t::Otsu) = t.minindex
+
+"""Performs Otsu thresholding algorithm
+
+N. Otsu: "A threshold selection method from gray-level histograms", Automatica, 1975, 11, 285-296.
+"""
+function fit(::Type{Otsu}, H::Vector{Int}, n::Int; tol=1.0e-5)
+    N = length(H)
+
+    # calculate stats
+    S = LMCLUS.recurstats(H, n)
+
+    varmax = 0.0
+    thr = 0
+    for t in 1:N
+        btwvar = S[t,1]*S[t,2]*(S[t,4]-S[t,3])^2
+        if btwvar > varmax
+            varmax = btwvar
+            thr = t
+        end
+    end
+    return Otsu(S, thr)
+end
