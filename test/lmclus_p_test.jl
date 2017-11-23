@@ -12,9 +12,9 @@ using Base.Test
     p.random_seed = 4572489057
     testDataFile = joinpath(dirname(@__FILE__),"testData")
     ds = readdlm(testDataFile, ',')
-    manifolds1 = lmclus(ds[:,1:end-1]', p)
-    @test length(manifolds1) >= 3
-    manifolds2 = lmclus(ds[:,1:end-1]', p, 3)
-    @test length(manifolds2) >= 3
+    res1 = lmclus(ds[:,1:end-1]', p)
+    @test nclusters(res1) >= 3
+    res2 = lmclus(ds[:,1:end-1]', p, 3)
+    @test nclusters(res2) >= 3
 
 end

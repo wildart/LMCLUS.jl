@@ -68,6 +68,7 @@ function Base.dump(io::IO, M::Manifold)
     Base.showarray(io, projection(M), header=false, repr=false)
 end
 
+"""Algorithm specific exception"""
 struct LMCLUSException <: Exception
     msg::String
 end

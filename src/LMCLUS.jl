@@ -1,6 +1,7 @@
 module LMCLUS
 
 import MultivariateStats: MultivariateStats, PCA, fit, principalratio, indim, outdim, projection
+import Clustering: ClusteringResult, assignments, counts, nclusters
 
 export  lmclus,
 
@@ -17,10 +18,16 @@ export  lmclus,
         separation,
         mean,
         projection,
-        assignments
+
+        nclusters,
+        counts,
+        assignments,
+        manifold
+
 
 include("types.jl")
 include("params.jl")
+include("results.jl")
 include("utils.jl")
 include("kittler.jl")
 include("otsu.jl")
@@ -38,7 +45,7 @@ function lmclus(X::Matrix{T}, params::Parameters, np::Int=nprocs()) where {T<:Re
     else
         randjump(MersenneTwister(seed), np)
     end
-    return lmclus(X, params, mts)
+    return LMCLUSResult(lmclus(X, params, mts), Separation[])
 end
 
 function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}) where {T<:Real}

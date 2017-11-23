@@ -51,42 +51,42 @@ using Combinatorics
 	@test typeof(s[3]) == Matrix{Float64}
 
 	# run clustering
-	manifolds = lmclus(data,p)
-	@test length(manifolds) >= 3
-	@test sum(map(m->length(m.points), manifolds)) == size(ds, 1)
+	res = lmclus(data,p)
+	@test nclusters(res) >= 3
+	@test sum(counts(res)) == size(ds, 1)
 
-	@testset "Label Match" for idxs in combinations(1:length(manifolds),2)
+	cnts = counts(res)
+	@testset "Label Match" for idxs in combinations(1:nclusters(res),2)
 		i = idxs[1]
 		j = idxs[2]
-		@test length(symdiff(labels(manifolds[i]), labels(manifolds[j]))) ==
-				length(labels(manifolds[i])) + length(labels(manifolds[j]))
+		@test length(symdiff(labels(manifold(res,i)), labels(manifold(res, j)))) == cnts[i] + cnts[j]
 	end
 
 	# Sampling
 	p.histogram_sampling = true
 	p.number_of_clusters = 3
-	manifolds = lmclus(data,p)
-	@test length(manifolds) >= 3
+	res = lmclus(data,p)
+	@test nclusters(res) >= 3
 	p.histogram_sampling = false
 
 	# RNG seed
 	p.random_seed = 0
-	manifolds = lmclus(data,p)
-	@test length(manifolds) >= 3
+	res = lmclus(data,p)
+	@test nclusters(res) >= 3
 
 	# MDL
 	LMCLUS.MDL.type!(LMCLUS.MDL.SizeIndependent)
 	p.mdl = true
-	manifolds = lmclus(data,p)
-	@test length(manifolds) >= 3
+	res = lmclus(data,p)
+	@test nclusters(res) >= 3
 	p.mdl = false
 
 	# 0D manifold search
 	p.zero_d_search = true
 	p.max_dim = 1
 	p.basis_alignment = false
-	manifolds = lmclus(data,p)
-	@test length(manifolds) >= 3
+	res = lmclus(data,p)
+	@test nclusters(res) >= 3
 	p.zero_d_search = false
 	p.basis_alignment = true
 	p.max_dim = 5
