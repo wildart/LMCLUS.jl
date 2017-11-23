@@ -7,4 +7,5 @@ using Base.Test
     include("lmclus_test.jl")
     include("lmclus_p_test.jl")
     include("mdl_test.jl")
+    include("boundaries_test.jl")
 end

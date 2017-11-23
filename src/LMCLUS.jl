@@ -36,6 +36,7 @@ function debug!()
     global DEBUG
     DEBUG = !DEBUG
 end
+include("boundary.jl")
 
 #
 # Linear Manifold Clustering
