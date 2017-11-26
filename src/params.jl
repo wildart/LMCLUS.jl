@@ -8,7 +8,7 @@ mutable struct Parameters
     max_dim::Int
     "Nominal number of resulting clusters"
     number_of_clusters::Int
-    "Terminate algorith upon founding specified number of clusters"
+    "Terminate algorithm upon founding specified number of clusters"
     stop_after_cluster::Int
     "Force to search clusters in high subspaces"
     force_max_dim::Bool
@@ -48,6 +48,8 @@ mutable struct Parameters
     mdl_quant_error::Float64
     "Compression threshold value for discarding candidate clusters"
     mdl_compres_ratio::Float64
+    "Enable creation of bounded linear manifold clusters"
+    bounded_cluster::Bool
     "Log level (0-5)"
     log_level::Int
 
@@ -75,7 +77,8 @@ mutable struct Parameters
         16,       # mdl_data_precision
         0.001,    # mdl_quant_error
         1.05,     # mdl_compres_ratio
-        0        # log_level
+        false,    # bounded_cluster
+        0         # log_level
     )
 end
 
@@ -104,6 +107,7 @@ show(io::IO, p::Parameters) =
     MDL data precision encoding (mdl_data_precision): $(p.mdl_data_precision)
     MDL quantizing error (mdl_quant_error): $(p.mdl_quant_error)
     MDL compression ratio threshold (mdl_compres_ratio): $(p.mdl_compres_ratio)
+    Creation of bounded linear manifold clusters (bounded_cluster): $(p.bounded_cluster)
     Log level (log_level): $(p.log_level)""")
 
 # Logger
