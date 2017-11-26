@@ -45,7 +45,7 @@ function lmclus(X::Matrix{T}, params::Parameters, np::Int=nprocs()) where {T<:Re
     else
         randjump(MersenneTwister(seed), np)
     end
-    return LMCLUSResult(lmclus(X, params, mts), Separation[])
+    return LMCLUSResult(lmclus(X, params, mts)...)
 end
 
 function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}) where {T<:Real}
@@ -56,6 +56,7 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
     index = collect(1:n)
     number_of_clusters = 0
     manifolds = Manifold[]
+    separations = Separation[]
 
     # Check if manifold maximum dimension is less then full dimension
     if N <= params.max_dim
@@ -66,7 +67,7 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
     # Main loop through dataset
     while length(index) > params.min_cluster_size
         # Find one manifold
-        best_manifold, remains = find_manifold(X, index, params, prngs, length(manifolds))
+        best_manifold, best_separation, remains = find_manifold(X, index, params, prngs, length(manifolds))
         number_of_clusters += 1
 
         # Perform basis alignment through PCA on found cluster
@@ -142,6 +143,7 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
         LOG(params, 2, @sprintf("found cluster #%d, size=%d, dim=%d",
                 number_of_clusters, length(labels(best_manifold)), indim(best_manifold)))
         push!(manifolds, best_manifold)
+        push!(separations, best_separation)
 
         # Stop clustering if found specified number of clusters
         length(manifolds) == params.stop_after_cluster && break
@@ -157,9 +159,10 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
         em.μ = zeros(T, N)
         em.proj = zeros(T, N, 0)
         push!(manifolds, em)
+        push!(separations, Separation())
     end
 
-    return manifolds
+    return manifolds, separations
 end
 
 # Find manifold in multiple dimensions
@@ -171,6 +174,7 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
     selected = copy(index)
     N = size(X,1) # full space dimension
     best_manifold = emptymanifold(N)
+    best_separation = Separation()
 
     for sep_dim in params.min_dim:params.max_dim
         separations = 0
@@ -200,9 +204,11 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
                 break
             end
 
-            # Create manifold cluster from good separation found
+            # create manifold cluster from good separation found
             selected = cluster_points
-            best_manifold = Manifold(sep_dim, origin, basis, selected, sep)
+            best_manifold = Manifold(sep_dim, origin, basis, selected)
+            best_manifold.θ = threshold(sep)
+            best_separation = sep
             append!(filtered, removed_points)
 
             LOG(params, 3, "separated points: ", length(selected))
@@ -249,7 +255,7 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
         best_manifold.d = 0
     end
 
-    best_manifold, filtered
+    best_manifold, best_separation, filtered
 end
 
 # LMCLUS main function:

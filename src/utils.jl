@@ -1,5 +1,5 @@
 """Empty manifold"""
-emptymanifold(N::Int, points::Vector{Int}=Int[]) = Manifold(N, zeros(N), eye(N,N), points, Separation())
+emptymanifold(N::Int, points::Vector{Int}=Int[]) = Manifold(N, zeros(N), eye(N,N), points, 0.0, 0.0)
 
 """Returns seed from parameters"""
 getseed(params::LMCLUS.Parameters) = params.random_seed == 0 ? time_ns() : params.random_seed

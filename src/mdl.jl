@@ -207,7 +207,7 @@ function datadl(::Type{Uniform}, C::Manifold, X::Matrix{T},
     PR = P*M
 
     # Entropy of point in the orthogonal complement space
-    E = -float(n)*log(separation(C).threshold)
+    E = -float(n)*log(separation(C)[1])
 
     # Number of bits of two parts for every point
     return round(Int, (PR + E)*n)

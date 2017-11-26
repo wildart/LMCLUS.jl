@@ -39,7 +39,9 @@ mutable struct Manifold
     "Linear manifold subspace distance threshold"
     σ::Float64
 end
-Manifold() = Manifold(0,Float64[],zeros(0,0),Int[],0.0,0.0)
+Manifold(d::Int, μ::Vector{Float64}, proj::Matrix{Float64}, pnts::Vector{Int}) =
+    Manifold(d, μ, proj, pnts, 0.0, 0.0)
+Manifold() = Manifold(0, zeros(0), zeros(0,0), Int[])
 
 # properties
 "Returns a dimension of the linear manifold cluster."
