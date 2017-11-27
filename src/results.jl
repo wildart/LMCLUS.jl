@@ -13,3 +13,4 @@ assignments(R::LMCLUSResult) = assignments(R.manifolds)
 
 """Get linear manifold cluster"""
 manifold(R::LMCLUSResult, idx::Int) = R.manifolds[idx]
+manifolds(R::LMCLUSResult) = R.manifolds
