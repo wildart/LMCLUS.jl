@@ -8,22 +8,20 @@ export  lmclus,
         kittler, otsu,
         distance_to_manifold,
 
-        criteria,
-        threshold,
-
         Manifold,
         indim,
         outdim,
         labels,
-        separation,
+        threshold,
         mean,
         projection,
+        criteria,
 
         nclusters,
         counts,
         assignments,
-        manifold
-
+        manifold,
+        manifolds
 
 include("types.jl")
 include("params.jl")
@@ -32,6 +30,7 @@ include("utils.jl")
 include("kittler.jl")
 include("otsu.jl")
 include("mdl.jl")
+include("zerodim.jl")
 include("deprecates.jl")
 
 #
@@ -68,82 +67,33 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
     while length(index) > params.min_cluster_size
         # Find one manifold
         best_manifold, best_separation, remains = find_manifold(X, index, params, prngs, length(manifolds))
-        number_of_clusters += 1
 
         # Perform basis alignment through PCA on found cluster
-        params.basis_alignment && adjustbasis!(best_manifold, X, params)
-
-        # Perform dimensioality regression
-        if params.zero_d_search && indim(best_manifold) <= 1
-            LOG(params, 3, "Searching zero dimensional manifolds...")
-
-            # adjust noise cluster to form 1D manifold
-            if indim(best_manifold) == 0
-                R = fit(PCA, X[:, labels(best_manifold)], maxoutdim = 1)
-                best_manifold.d = 0
-                best_manifold.μ = MultivariateStats.mean(R)
-                best_manifold.proj = MultivariateStats.projection(R)
-                LOG(params, 4, @sprintf("Adjusted noise cluster size=%d, dim=%d",
-                               length(labels(best_manifold)), indim(best_manifold)))
-            end
-
-            while true
-                L = labels(best_manifold)
-                # project data to manifold subspace
-                Z = project(best_manifold, X[:,L]) |> vec
-                # determine separation parameters
-                ZDsep = try
-                    kittler(Z)
-                catch ex
-                    if isa(ex, LMCLUSException)
-                        LOG(params, 5, ex.msg)
-                    else
-                        LOG(params, 5, string(ex))
-                    end
-                    Separation()
-                end
-                # stop search if we cannot separate manifold
-                criteria(ZDsep) < params.best_bound && break
-                LOG(params, 4, "Found zero-dimensional manifold. Separating...")
-
-                # separate cluster points
-                cluster_points = L[find(p->p<threshold(ZDsep), Z)]
-                removed_points = setdiff(L, cluster_points)
-
-                # cannot form small clusters, stop searching
-                length(cluster_points) <= params.min_cluster_size && break
-
-                # update manifold description
-                R = fit(PCA, X[:, removed_points], maxoutdim = 1)
-                best_manifold.points = removed_points # its labels
-                best_manifold.μ = MultivariateStats.mean(R)
-                best_manifold.proj = MultivariateStats.projection(R)
-                # best_manifold.d = MultivariateStats.outdim(R) == MultivariateStats.indim(R) ? 0 : MultivariateStats.outdim(R)
-                LOG(params, 4, "Shunk cluster to $(length(removed_points)) points.")
-
-                # form 0D cluster
-                R = fit(PCA, X[:, cluster_points])
-                zd_manifold = Manifold(0, MultivariateStats.mean(R),
-                                       MultivariateStats.projection(R),
-                                       cluster_points, ZDsep)
-                LOG(params, 4, "0D cluster formed with $(length(cluster_points)) points.")
-
-                # add new manifold to output
-                push!(manifolds, zd_manifold)
-                LOG(params, 2, @sprintf("found cluster #%d, size=%d, dim=%d",
-                    number_of_clusters, length(labels(zd_manifold)), indim(zd_manifold)))
-                number_of_clusters += 1
-
-                # main body of the noise cluster is form, stop further search (???)
-                indim(best_manifold) == 0 && break
-            end
+        if params.basis_alignment
+            adjustbasis!(best_manifold, X, adjust_dim = params.dim_adjustment,
+                         adjust_dim_ratio = params.dim_adjustment_ratio)
         end
 
-        # Add a new manifold cluster to collection
-        LOG(params, 2, @sprintf("found cluster #%d, size=%d, dim=%d",
+        # Perform dimensionality regression
+        if params.zero_d_search && indim(best_manifold) <= 1
+            LOG(params, 3, "Searching for zero dimensional manifolds...")
+            zdms, zdseps = zerodimsearch(best_manifold, X, params)
+            for (m,s) in zip(zdms, zdseps)
+                number_of_clusters += 1
+                # Add a new manifold cluster to collection
+                LOG(params, 2, @sprintf("found cluster #%d, size=%d, dim=%d",
+                    number_of_clusters, length(labels(m)), indim(m)))
+                push!(manifolds, m)
+                push!(separations, s)
+            end
+        else
+            number_of_clusters += 1
+            LOG(params, 2, @sprintf("found cluster #%d, size=%d, dim=%d",
                 number_of_clusters, length(labels(best_manifold)), indim(best_manifold)))
-        push!(manifolds, best_manifold)
-        push!(separations, best_separation)
+            # Add a new manifold cluster to collection
+            push!(manifolds, best_manifold)
+            push!(separations, best_separation)
+        end
 
         # Stop clustering if found specified number of clusters
         length(manifolds) == params.stop_after_cluster && break
@@ -178,15 +128,13 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
 
     for sep_dim in params.min_dim:params.max_dim
         separations = 0
-        ns = 0
 
         while true
-            sep, origin, basis, ns = find_best_separation(X[:, selected], sep_dim, params, prngs, found)
-            LOG(params, 4, "best bound: ", criteria(sep), " (", params.best_bound, ")")
-            LOG(params, 4, "threshold: ", threshold(sep))
+            sep, origin, basis = find_best_separation(X[:, selected], sep_dim, params, prngs, found)
+            log_separation(sep, params)
 
             # No good separation found
-            if criteria(sep) < params.best_bound
+            if check_separation(sep, params)
                 if sep_dim == params.max_dim
                     LOG(params, 3, "no separation, forming cluster...")
                 else
@@ -196,16 +144,15 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
             end
 
             # filter separated points
-            cluster_points, removed_points = filter_separeted(selected, X, origin, basis, sep)
+            selected, removed_points = filter_separeted(selected, X, origin, basis, sep)
 
             # small amount of points is considered noise, try to bump dimension
-            if length(cluster_points) <= params.min_cluster_size
+            if length(selected) <= params.min_cluster_size
                 LOG(params, 3, "noise: cluster size < ", params.min_cluster_size," points")
                 break
             end
 
             # create manifold cluster from good separation found
-            selected = cluster_points
             best_manifold = Manifold(sep_dim, origin, basis, selected)
             best_manifold.θ = threshold(sep)
             best_separation = sep
@@ -242,7 +189,6 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
             end
         end
 
-        #diagnostic(sep_dim, best_manifold, selected, params, mdl, ns, length(filtered))
         !params.force_max_dim && separations > 0 && break
     end
 
@@ -307,11 +253,8 @@ function find_best_separation(X::Matrix{T}, lm_dim::Int,
     cr = criteria(best_sep)
     if cr <= 0.
         LOG(params, 4, "no good histograms to separate data !!!")
-    else
-        LOG(params, 4, "separation: width=", best_sep.discriminability,
-        "  depth=", best_sep.depth, "  criteria=", cr)
     end
-    return best_sep, best_origin, best_basis, Q
+    return best_sep, best_origin, best_basis
 end
 
 function sample_manifold(X::Matrix{T}, lm_dim::Int,
@@ -326,7 +269,8 @@ function sample_manifold(X::Matrix{T}, lm_dim::Int,
         if length(sample) == 0
             continue
         end
-        sep, origin, basis = calculate_separation(X, sample, params)
+        origin, basis = form_basis(X, sample)
+        sep = find_separation(X, origin, basis, params)
         if criteria(sep) > criteria(best_sep)
             best_sep = sep
             best_origin = origin
@@ -337,24 +281,10 @@ function sample_manifold(X::Matrix{T}, lm_dim::Int,
     return best_sep, best_origin, best_basis, prng
 end
 
-function calculate_separation(X::Matrix{T}, sample::Vector{Int}, params::Parameters) where {T<:Real}
-    origin, basis = form_basis(X[:, sample])
-    sep = try
-        find_separation(X, origin, basis, params)
-    catch ex
-        if isa(ex, LMCLUSException)
-            LOG(params, 5, ex.msg)
-        else
-            LOG(params, 5, string(ex))
-        end
-        Separation()
-    end
-    return (sep, origin, basis)
-end
-
 # Find separation criteria
-function find_separation(X::Matrix{T}, origin::Vector{T},
-                         basis::Matrix{T}, params::Parameters) where {T<:Real}
+function find_separation(X::AbstractMatrix, origin::AbstractVector,
+                         basis::AbstractMatrix, params::Parameters,
+                         ocss::Bool = false)
     # Define sample for distance calculation
     if params.histogram_sampling
         Z_01=2.576  # Z random variable, confidence interval 0.99
@@ -373,10 +303,21 @@ function find_separation(X::Matrix{T}, origin::Vector{T},
         sampleIndex = sample_points(X, n)
     end
 
-    distances = distance_to_manifold(params.histogram_sampling ? X[:,sampleIndex] : X , origin, basis)
-    # Define histogram size
+    # calculate distances to the manifold
+    distances = distance_to_manifold(params.histogram_sampling ? X[:,sampleIndex] : X , origin, basis, ocss)
+    # define histogram size
     bins = hist_bin_size(distances, params)
-    return kittler(distances, bins=bins)
+    # find separation of the distance histogram
+    try
+        return kittler(distances, bins=bins)
+    catch ex
+        if isa(ex, LMCLUSException)
+            LOG(params, 5, ex.msg)
+        else
+            LOG(params, 5, string(ex))
+        end
+        return Separation()
+    end
 end
 
 # Determine the number of times to sample the data in order to guaranty
@@ -422,15 +363,11 @@ end
 
 # Calculates distance from point to manifold defined by basis
 # Note: point should be translated wrt manifold origin
-function distance_to_manifold(point::Vector{T}, basis::Matrix{T}) where {T<:Real}
+function distance_to_manifold(point::AbstractVector, basis::AbstractMatrix)
     d_n = 0.0
     d_v = basis' * point
     c = sum(abs2, point)
     b = sum(abs2, d_v)
-    # @inbounds for j = 1:length(point)
-    #     c += point[j]*point[j]
-    #     b += d_v[j]*d_v[j]
-    # end
     if c >= b
         d_n = sqrt(c-b)
         if d_n > 1e10
@@ -441,12 +378,11 @@ function distance_to_manifold(point::Vector{T}, basis::Matrix{T}) where {T<:Real
     return d_n
 end
 
-distance_to_manifold(point::Vector{T}, origin::Vector{T}, basis::Matrix{T}) where {T<:Real} =
+distance_to_manifold(point::AbstractVector, origin::AbstractVector, basis::AbstractMatrix) =
     distance_to_manifold(point - origin, basis)
 
 # Determine the distance of each point in the dataset from to a linear manifold
-function distance_to_manifold(X::Matrix{T}, origin::Vector{T}, basis::Matrix{T}) where {T<:Real}
-
+function distance_to_manifold(X::Matrix{T}, origin::Vector{T}, basis::Matrix{T}, ocss::Bool = false) where {T<:Real}
     N, n = size(X)
     M = size(basis,2)
     # vector to hold distances of points from basis
@@ -455,7 +391,9 @@ function distance_to_manifold(X::Matrix{T}, origin::Vector{T}, basis::Matrix{T})
     @fastmath @inbounds for i in 1:n
         @simd for j in 1:N
             tran[j,i] = X[j,i] - origin[j]
-            distances[i] += tran[j,i]*tran[j,i]
+            if !ocss
+                distances[i] += tran[j,i]*tran[j,i]
+            end
         end
     end
     proj = At_mul_B(basis,tran)

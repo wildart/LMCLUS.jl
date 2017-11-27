@@ -105,7 +105,7 @@ function sample_points(X::Matrix{T}, k::Int, r::MersenneTwister) where T <: Real
 end
 
 """Modified Gram-Schmidt orthogonalization algorithm"""
-function orthogonalize(vecs::Matrix{T}) where {T<:Real}
+function orthogonalize(vecs::AbstractMatrix{T}) where {T<:Real}
     m, n = size(vecs)
     basis = zeros(T, m, n)
     for j = 1:n
@@ -126,9 +126,9 @@ end
 # creating a basis matrix with one less vector than the number of sampled points.
 # Then perform orthogonalization through Gram-Schmidt process.
 # Note: Resulting basis is transposed.
-function form_basis(X::Matrix{T}) where {T<:Real}
-    origin = X[:,1]
-    basis = X[:,2:end] .- origin
+function form_basis(X::AbstractMatrix, sample::Vector{Int})
+    origin = X[:,sample[1]]
+    basis = X[:,sample[2:end]] .- origin
     vec(origin), orthogonalize(basis)
 end
 
@@ -166,16 +166,25 @@ function filter_separeted(selected_points, X, O, B, S)
     return cluster_points, removed_points
 end
 
-function adjustbasis!(M::Manifold, X::Matrix{T}, P::LMCLUS.Parameters) where T <: Real
-    R = if indim(M) > 0 && !P.dim_adjustment
-        fit(PCA, X[:, labels(M)]; maxoutdim=indim(M)) # method=:svd,
+function adjustbasis!(M::Manifold, X::AbstractMatrix;
+                      adjust_dim::Bool=false, adjust_dim_ratio::Float64=0.99)
+    R = if indim(M) > 0 && !adjust_dim
+        fit(PCA, X[:, labels(M)]; maxoutdim=indim(M))
     else
-        fit(PCA, X[:, labels(M)]; pratio = P.dim_adjustment_ratio > 0.0 ? P.dim_adjustment_ratio : 0.99)
+        fit(PCA, X[:, labels(M)]; pratio = adjust_dim_ratio)
     end
-    if P.dim_adjustment
+    if adjust_dim
         M.d = MultivariateStats.outdim(R)
     end
     M.μ = MultivariateStats.mean(R)
     M.proj = MultivariateStats.projection(R)
     return M
+end
+
+check_separation(sep::Separation, params::Parameters) = criteria(sep) < params.best_bound
+
+function log_separation(sep::Separation, params::Parameters)
+    LOG(params, 4, "separation: width=", sep.discriminability, "  depth=", sep.depth)
+    LOG(params, 4, "  criteria: $(criteria(sep)) (best bound=$(params.best_bound))")
+    LOG(params, 4, " threshold: $(threshold(sep))")
 end
