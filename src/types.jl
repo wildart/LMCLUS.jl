@@ -51,12 +51,12 @@ outdim(M::Manifold) = length(M.points)
 "Return an array of cluster assignments."
 labels(M::Manifold) = M.points
 "Returns the cluster thresholds."
-separation(M::Manifold) = (M.θ, M.σ)
+threshold(M::Manifold) = (M.θ, M.σ)
 "Returns the matrix with columns corresponding to orthonormal vectors that span the linear manifold."
 projection(M::Manifold) = M.proj
 "Returns the translation vector `μ` which contains coordinates of the linear manifold origin."
 Base.mean(M::Manifold) = M.μ
-Base.copy(M::Manifold) = Manifold(indim(M),mean(M),projection(M),labels(M),separation(M)...)
+Base.copy(M::Manifold) = Manifold(indim(M),mean(M),projection(M),labels(M),threshold(M)...)
 
 function Base.show(io::IO, M::Manifold)
     print(io, "Manifold (dim = $(indim(M)), size = $(outdim(M)))")
@@ -64,7 +64,7 @@ end
 function Base.dump(io::IO, M::Manifold)
     show(io, M)
     println(io)
-    println(io, "thresholds (θ,σ): $(separation(M)) ")
+    println(io, "thresholds (θ,σ): $(threshold(M)) ")
     println(io, "translation (μ): ")
     Base.showarray(io, mean(M)', header=false, repr=false)
     println(io)

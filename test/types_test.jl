@@ -21,7 +21,7 @@ using LMCLUS
     @test labels(m) == [1, 2, 3]
     @test mean(m) == [2., 2.]
     @test projection(m) == [2. 2.; 2. 2.]
-    @test separation(m) == (10., 10.)
+    @test threshold(m) == (10., 10.)
     @test assignments([m]) == ones(3)
 
     io = IOBuffer()
@@ -33,5 +33,5 @@ using LMCLUS
     @test labels(m) == labels(n)
     @test mean(m) == mean(n)
     @test projection(m) == projection(n)
-    @test separation(m) == separation(n)
+    @test threshold(m) == threshold(n)
 end

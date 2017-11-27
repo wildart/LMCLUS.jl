@@ -1,7 +1,7 @@
 module MDL
 
 using StatsBase
-import ..LMCLUS: Manifold, indim, outdim, mean, projection, separation, labels
+import ..LMCLUS: Manifold, indim, outdim, mean, projection, threshold, labels
 
 # Various types for MDL calculation
 abstract type MethodType end
@@ -207,7 +207,7 @@ function datadl(::Type{Uniform}, C::Manifold, X::Matrix{T},
     PR = P*M
 
     # Entropy of point in the orthogonal complement space
-    E = -float(n)*log(separation(C)[1])
+    E = -float(n)*log(threshold(C)[1])
 
     # Number of bits of two parts for every point
     return round(Int, (PR + E)*n)
