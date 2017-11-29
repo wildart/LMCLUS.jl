@@ -188,3 +188,23 @@ function log_separation(sep::Separation, params::Parameters)
     LOG(params, 4, "  criteria: $(criteria(sep)) (best bound=$(params.best_bound))")
     LOG(params, 4, " threshold: $(threshold(sep))")
 end
+
+# Calculates distance from point to manifold defined by basis
+# Note: point should be translated wrt manifold origin
+function distance_to_manifold(point::AbstractVector, basis::AbstractMatrix)
+    d_n = 0.0
+    d_v = basis' * point
+    c = sum(abs2, point)
+    b = sum(abs2, d_v)
+    if c >= b
+        d_n = sqrt(c-b)
+        if d_n > 1e10
+            warn("Distance is too large: $(point) -> $(d_v) = $(d_n)")
+            d_n = 0.0
+        end
+    end
+    return d_n
+end
+
+distance_to_manifold(point::AbstractVector, origin::AbstractVector, basis::AbstractMatrix) =
+    distance_to_manifold(point - origin, basis)
