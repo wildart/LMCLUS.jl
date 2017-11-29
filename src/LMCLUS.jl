@@ -68,26 +68,13 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
         # Find one manifold
         best_manifold, best_separation, remains = find_manifold(X, index, params, prngs, length(manifolds))
 
-        # Perform dimensionality regression
-        if params.zero_d_search && indim(best_manifold) <= 1
-            LOG(params, 3, "Searching for zero dimensional manifolds...")
-            zdms, zdseps = zerodimsearch(best_manifold, X, params)
-            for (m,s) in zip(zdms, zdseps)
-                number_of_clusters += 1
-                # Add a new manifold cluster to collection
-                LOG(params, 2, @sprintf("found cluster #%d, size=%d, dim=%d",
-                    number_of_clusters, length(labels(m)), indim(m)))
-                push!(manifolds, m)
-                push!(separations, s)
-            end
-        else
-            number_of_clusters += 1
-            LOG(params, 2, @sprintf("found cluster #%d, size=%d, dim=%d",
-                number_of_clusters, length(labels(best_manifold)), indim(best_manifold)))
-            # Add a new manifold cluster to collection
-            push!(manifolds, best_manifold)
-            push!(separations, best_separation)
-        end
+        # Add a new manifold cluster to collection
+        push!(manifolds, best_manifold)
+        push!(separations, best_separation)
+
+        number_of_clusters += 1
+        LOG(params, 2, @sprintf("found cluster #%d, size=%d, dim=%d",
+            number_of_clusters, length(labels(best_manifold)), indim(best_manifold)))
 
         # Stop clustering if found specified number of clusters
         length(manifolds) == params.stop_after_cluster && break

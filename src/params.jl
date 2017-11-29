@@ -30,8 +30,6 @@ mutable struct Parameters
     sampling_factor::Float64
     "Enables a sampling for a distance histogram"
     histogram_sampling::Bool
-    "Enables zero-dimensional manifold search"
-    zero_d_search::Bool
     "Enables an alignment of a manifold cluster basis"
     basis_alignment::Bool
     "Enables a linear manifold cluster dimensionality detection"
@@ -68,7 +66,6 @@ mutable struct Parameters
         3,        # sampling_heuristic
         0.01,     # sampling_factor
         false,    # histogram_sampling
-        false,    # zero_d_search
         false,    # basis_alignment
         false,    # dim_adjustment
         0.99,     # dim_adjustment_ratio
@@ -98,7 +95,6 @@ show(io::IO, p::Parameters) =
     Sampling heuristic (sampling_heuristic): $(p.sampling_heuristic)
     Sampling factor (sampling_factor): $(p.sampling_factor)
     Random seed (random_seed): $(p.random_seed) (0 - random seed)
-    0D manifold search (zero_d_search): $(p.zero_d_search)
     Manifold cluster basis alignment (basis_alignment): $(p.basis_alignment)
     Manifold dimensionality adjustment (dim_adjustment): $(p.dim_adjustment)
     Ratio of manifold principal subspace variance (dim_adjustment_ratio): $(p.dim_adjustment_ratio)
