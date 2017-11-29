@@ -68,12 +68,6 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
         # Find one manifold
         best_manifold, best_separation, remains = find_manifold(X, index, params, prngs, length(manifolds))
 
-        # Perform basis alignment through PCA on found cluster
-        if params.basis_alignment
-            adjustbasis!(best_manifold, X, adjust_dim = params.dim_adjustment,
-                         adjust_dim_ratio = params.dim_adjustment_ratio)
-        end
-
         # Perform dimensionality regression
         if params.zero_d_search && indim(best_manifold) <= 1
             LOG(params, 3, "Searching for zero dimensional manifolds...")
@@ -201,6 +195,18 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
         best_manifold.d = 0
     end
 
+    # Estimate second bound for the cluster
+    if params.bounded_cluster
+        LOG(params, 3, "separating within manifold subspace...")
+        orth_separation = find_separation(X[:,selected], mean(best_manifold), projection(best_manifold), params, true)
+        log_separation(orth_separation, params)
+        best_manifold.σ = if check_separation(orth_separation, params)
+            extrema(orth_separation)[2]
+        else
+            threshold(orth_separation)
+        end
+    end
+
     best_manifold, best_separation, filtered
 end
 
@@ -284,7 +290,7 @@ end
 # Find separation criteria
 function find_separation(X::AbstractMatrix, origin::AbstractVector,
                          basis::AbstractMatrix, params::Parameters,
-                         ocss::Bool = false)
+                         ocss::Bool = false; debug::Bool=false)
     # Define sample for distance calculation
     if params.histogram_sampling
         Z_01=2.576  # Z random variable, confidence interval 0.99
@@ -308,16 +314,7 @@ function find_separation(X::AbstractMatrix, origin::AbstractVector,
     # define histogram size
     bins = hist_bin_size(distances, params)
     # find separation of the distance histogram
-    try
-        return kittler(distances, bins=bins)
-    catch ex
-        if isa(ex, LMCLUSException)
-            LOG(params, 5, ex.msg)
-        else
-            LOG(params, 5, string(ex))
-        end
-        return Separation()
-    end
+    return kittler(distances, bins=bins, debug=debug)
 end
 
 # Determine the number of times to sample the data in order to guaranty
