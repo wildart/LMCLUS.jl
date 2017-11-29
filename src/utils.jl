@@ -147,7 +147,7 @@ function project(m::Manifold, X::Matrix{T}) where T <: Real
     return proj
 end
 
-function filter_separeted(selected_points, X, O, B, S)
+function filter_separated(selected_points, X, O, B, S)
     cluster_points = Int[]
     removed_points  = Int[]
     θ = threshold(S)

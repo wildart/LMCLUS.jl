@@ -33,11 +33,8 @@ using Combinatorics
 
 	# Test clustering
 	p = LMCLUS.Parameters(5)
-	p.basis_alignment = true
-	p.log_level = 0
-	p.dim_adjustment = true
-	p.dim_adjustment_ratio = 0.95
 	p.random_seed = 4572489057
+	p.log_level = 0
 	# println(p) # test show()
 
 	testDataFile = joinpath(dirname(@__FILE__),"testData")
@@ -81,14 +78,18 @@ using Combinatorics
 	@test nclusters(res) >= 3
 	p.mdl = false
 
-	# 0D manifold search
-	p.zero_d_search = true
-	p.max_dim = 1
-	p.basis_alignment = false
+	# adjust cluster bases
+	p.basis_alignment = true
 	res = lmclus(data,p)
 	@test nclusters(res) >= 3
-	p.zero_d_search = false
+	p.basis_alignment = false
+
+	# calculate cluster bounsds
 	p.basis_alignment = true
-	p.max_dim = 5
+	p.bounded_cluster = true
+	res = lmclus(data,p)
+	@test nclusters(res) >= 3
+	p.bounded_cluster = false
+	p.basis_alignment = false
 
 end
