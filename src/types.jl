@@ -9,16 +9,22 @@ mutable struct Separation
     threshold::Float64
     "Global minimum as histogram bin index"
     globalmin::Int
-    "Histogram ranges"
-    hist_range::Vector{Float64}
+    "Minimal distance"
+    mindist::Float64
+    "Maximal distance"
+    maxdist::Float64
+    "Number of bins in the histogram"
+    bins::Int
 end
-Separation() = Separation(-Inf, eps(), Inf, -1, Float64[])
+# Separation() = Separation(-Inf, eps(), Inf, -1, Float64[])
+Separation() = Separation(0.0, 0.0, 0.0, 0, 0.0, 0.0, 0)
 
 # properties
 "Returns separation criteria value which is product of depth and discriminability."
 criteria(sep::Separation) = sep.discriminability*sep.depth
 "Returns distance threshold value for separation calculated on histogram of distances. It is used to determine which points belong to formed cluster."
 threshold(sep::Separation) = sep.threshold
+Base.extrema(sep::Separation) = (sep.mindist, sep.maxdist)
 
 function Base.show(io::IO, S::Separation)
     print(io, "Separation($(criteria(S)), θ=$(threshold(S)))")

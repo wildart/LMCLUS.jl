@@ -14,9 +14,13 @@ function kittler(xs::Vector{T}; bins = 20, tol = 1.0e-5, debug = false) where {T
     Hw = H.weights
     Hn = Hw/convert(T, length(xs)-1)
 
-    depth, discriminability, threshold, min_index, criterion_func = kittler(Hn, minX, maxX, tol=tol, debug=debug)
-    # depth, discriminability, threshold, min_index, r, c
-    Separation(depth, discriminability, threshold, min_index, collect(r))
+    return try
+        depth, discriminability, threshold, min_index, criterion_func = kittler(Hn, minX, maxX, tol=tol, debug=debug)
+        # depth, discriminability, threshold, min_index, r, c
+        Separation(depth, discriminability, threshold, min_index, minX, maxX, bins)
+    catch
+        Separation(0.0, 0.0, maxX, 0, minX, maxX, bins)
+    end
 end
 
 function kittler(H::Vector{T}, minX::T, maxX::T;  tol=1.0e-5, debug = false) where {T<:Real}
