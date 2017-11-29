@@ -124,7 +124,7 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
         separations = 0
 
         while true
-            sep, origin, basis = find_best_separation(X[:, selected], sep_dim, params, prngs, found)
+            sep, origin, basis = find_separation_basis(X[:, selected], sep_dim, params, prngs, found)
             log_separation(sep, params)
 
             # No good separation found
@@ -215,10 +215,10 @@ end
 # 2- create distance histograms of the data points to each trial linear manifold
 # 3- of all the linear manifolds sampled select the one whose associated distance histogram
 #    shows the best separation between to modes.
-function find_best_separation(X::Matrix{T}, lm_dim::Int,
-                              params::Parameters,
-                              prngs::Vector{MersenneTwister},
-                              found::Int=0) where {T<:Real}
+function find_separation_basis(X::Matrix{T}, lm_dim::Int,
+                               params::Parameters,
+                               prngs::Vector{MersenneTwister},
+                               found::Int=0) where {T<:Real}
     full_space_dim, data_size = size(X)
 
     LOG(params, 3, "---------------------------------------------------------------------------------")
@@ -287,10 +287,15 @@ function sample_manifold(X::Matrix{T}, lm_dim::Int,
     return best_sep, best_origin, best_basis, prng
 end
 
-# Find separation criteria
+"""Find separation criteria
+
+Given a dataset `X`, an tanslation vector `origin` and set of basis vectors `basis` of the linear manifold.
+
+`ocss` parameter enables separation for the orthogonal complement subspace of the linera manifold
+"""
 function find_separation(X::AbstractMatrix, origin::AbstractVector,
-                         basis::AbstractMatrix, params::Parameters,
-                         ocss::Bool = false; debug::Bool=false)
+                         basis::AbstractMatrix, params::Parameters;
+                         ocss::Bool = false, debug::Bool=false)
     # Define sample for distance calculation
     if params.histogram_sampling
         Z_01=2.576  # Z random variable, confidence interval 0.99
@@ -310,7 +315,8 @@ function find_separation(X::AbstractMatrix, origin::AbstractVector,
     end
 
     # calculate distances to the manifold
-    distances = distance_to_manifold(params.histogram_sampling ? X[:,sampleIndex] : X , origin, basis, ocss)
+    distances = distance_to_manifold(params.histogram_sampling ? X[:,sampleIndex] : X ,
+                                     origin, basis, ocss = ocss)
     # define histogram size
     bins = hist_bin_size(distances, params)
     # find separation of the distance histogram
@@ -355,31 +361,14 @@ end
 
 # Calculate histogram size
 function hist_bin_size(xs::Vector, params::Parameters)
-    return params.hist_bin_size == 0 ? (round(Int, length(xs) * params.max_bin_portion)) : params.hist_bin_size
+    return params.hist_bin_size == 0 ?
+        round(Int, length(xs) * params.max_bin_portion) :
+        params.hist_bin_size
 end
 
-# Calculates distance from point to manifold defined by basis
-# Note: point should be translated wrt manifold origin
-function distance_to_manifold(point::AbstractVector, basis::AbstractMatrix)
-    d_n = 0.0
-    d_v = basis' * point
-    c = sum(abs2, point)
-    b = sum(abs2, d_v)
-    if c >= b
-        d_n = sqrt(c-b)
-        if d_n > 1e10
-            warn("Distance is too large: $(point) -> $(d_v) = $(d_n)")
-            d_n = 0.0
-        end
-    end
-    return d_n
-end
-
-distance_to_manifold(point::AbstractVector, origin::AbstractVector, basis::AbstractMatrix) =
-    distance_to_manifold(point - origin, basis)
-
-# Determine the distance of each point in the dataset from to a linear manifold
-function distance_to_manifold(X::Matrix{T}, origin::Vector{T}, basis::Matrix{T}, ocss::Bool = false) where {T<:Real}
+# Determine the distance of each point in the dataset from to a linear manifold (batch-function)
+function distance_to_manifold(X::AbstractMatrix{T}, origin::Vector{T}, basis::Matrix{T};
+                              ocss::Bool = false) where {T<:Real}
     N, n = size(X)
     M = size(basis,2)
     # vector to hold distances of points from basis
