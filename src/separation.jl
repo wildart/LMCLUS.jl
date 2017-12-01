@@ -10,17 +10,18 @@ function separation(::Type{T}, xs::Vector{S};
     r = linspace(minX, maxX, bins+1)
     H = fit(Histogram, xs, r, closed=:left)
     N = length(H.weights)
+    debug && println("H: $(H.weights)")
 
     return try
-        thresh = fit(T, H.weights, length(xs)-1)
+        thresh = fit(T, H.weights, length(xs)-1, debug = debug)
 
         minIdx = minimum(thresh)
         s = stats(thresh)
-        threshold = minX + ( midx * (maxX - minX) / N )
-        discriminability = (abs(s[midx,3]-s[midx,4]))/(sqrt(s[midx,5]+s[midx,6]))
+        threshold = minX + ( minIdx * (maxX - minX) / N )
+        discriminability = (abs(s[minIdx,3]-s[minIdx,4]))/(sqrt(s[minIdx,5]+s[minIdx,6]))
 
         Separation(depth(thresh), discriminability, threshold, minIdx, minX, maxX, bins)
-    catch
+    catch ex
         Separation(0.0, 0.0, maxX, 0, minX, maxX, bins)
     end
 end
@@ -39,7 +40,7 @@ Base.minimum(t::Kittler) = t.minindex
 
 J. Kittler & J. Illingworth: "Minimum Error Thresholding", Pattern Recognition, Vol 19, nr 1. 1986, pp. 41-47.
 """
-function fit(::Type{Kittler}, H::Vector{Int}, n::Int; tol=1.0e-5)
+function fit(::Type{Kittler}, H::Vector{Int}, n::Int; tol=1.0e-5, debug=false)
     N = length(H)
 
     # calculate stats
@@ -52,6 +53,7 @@ function fit(::Type{Kittler}, H::Vector{Int}, n::Int; tol=1.0e-5)
             J[t] = 1 + 2*(S[t,1]*log(sqrt(S[t,5])) + S[t,2]*log(sqrt(S[t,6]))) - 2*(S[t,1]*log(S[t,1]) + S[t,2]*log(S[t,2]))
         end
     end
+    debug && println("J: $J")
 
     # Global minimum parameters
     depth, global_min = find_global_min(J, tol)
@@ -73,7 +75,7 @@ Base.minimum(t::LMCLUS.Otsu) = t.minindex
 
 N. Otsu: "A threshold selection method from gray-level histograms", Automatica, 1975, 11, 285-296.
 """
-function fit(::Type{Otsu}, H::Vector{Int}, n::Int; tol=1.0e-5)
+function fit(::Type{Otsu}, H::Vector{Int}, n::Int; tol=1.0e-5, debug=false)
     N = length(H)
 
     # calculate stats
@@ -86,6 +88,7 @@ function fit(::Type{Otsu}, H::Vector{Int}, n::Int; tol=1.0e-5)
         varw = S[t,1]*S[t,5] - S[t,2]*S[t,6]
         J[t] = varb/varw
     end
+    debug && println("J: $J")
 
     # Global minimum parameters
     depth, global_min = find_global_min(J, tol)
