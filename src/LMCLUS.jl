@@ -30,7 +30,6 @@ include("results.jl")
 include("utils.jl")
 include("separation.jl")
 include("mdl.jl")
-include("deprecates.jl")
 
 #
 # Linear Manifold Clustering
