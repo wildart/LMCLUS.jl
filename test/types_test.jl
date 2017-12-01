@@ -3,7 +3,7 @@ using LMCLUS
 
 @testset "LMCLUS Types" begin
 
-    s = LMCLUS.Separation(10., 10., 10., 10)
+    s = LMCLUS.Separation(10., 10., 10., 10, 10.0, 10.0, 10)
     io = IOBuffer()
     serialize(io, s)
     seek(io, 0)
@@ -13,6 +13,9 @@ using LMCLUS
     @test s.threshold == d.threshold
     @test s.globalmin == d.globalmin
     @test s.threshold == threshold(s)
+    @test s.maxdist == d.maxdist
+    @test s.mindist == d.mindist
+    @test s.bins == d.bins
 
     m = Manifold(2, [2., 2.], [2. 2.; 2. 2.], [1, 2, 3], 10., 10.)
     @test indim(m) == 2
@@ -32,11 +35,6 @@ using LMCLUS
     @test labels(m) == labels(n)
     @test mean(m) == mean(n)
     @test projection(m) == projection(n)
+    @test threshold(m) == threshold(n)
 
-    S = separation(n)
-    @test s.depth == S.depth
-    @test s.discriminability == S.discriminability
-    @test s.threshold == S.threshold
-    @test s.globalmin == S.globalmin
-    @test s.threshold == threshold(S)
 end

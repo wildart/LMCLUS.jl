@@ -20,6 +20,6 @@ using Base.Test
 	result = float(reshape([1,2,2,-2,-1,2, 2,-2,1],3,3))/3.0
 	@test LMCLUS.orthogonalize(basis) ≈ result
 	data = float(reshape([1,1,0, 2,3,2, 0,1,2, 1,1,1],3,4))
-	@test LMCLUS.form_basis(data)[2] ≈ result
+	@test LMCLUS.form_basis(data, collect(1:4))[2] ≈ result
 
 end
