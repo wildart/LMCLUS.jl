@@ -14,6 +14,8 @@ mutable struct Parameters
     force_max_dim::Bool
     "Fixed number of bins for the distance histogram"
     hist_bin_size::Int
+    "Minimum number of bins for the distance histogram"
+    min_bin_size::Int
     "Minimum cluster size (or noise size) in order to prevent generation of small clusters"
     min_cluster_size::Int
     "Separation best bound value is used for evaluating a goodness of separation characterized by a discriminability and a depth between modes of a distance histogram."
@@ -50,8 +52,6 @@ mutable struct Parameters
     bounded_cluster::Bool
     "Separation threshold algorithm"
     sep_algo::DataType
-    "Log level (0-5)"
-    log_level::Int
 
     Parameters(max_dim) = new(
         1,        # min_dim
@@ -60,6 +60,7 @@ mutable struct Parameters
         1000,     # stop_after_cluster
         false,    # force_max_dim
         0,        # hist_bin_size
+        7,        # min_bin_size
         20,       # min_cluster_size
         1.0,      # best_bound
         0.0001,   # error_bound
@@ -77,8 +78,7 @@ mutable struct Parameters
         0.001,    # mdl_quant_error
         1.05,     # mdl_compres_ratio
         false,    # bounded_cluster
-        Kittler,  # sep_algo
-        0         # log_level
+        Kittler   # sep_algo
     )
 end
 
@@ -94,6 +94,7 @@ show(io::IO, p::Parameters) =
     Error bound (error_bound): $(p.error_bound)
     Sample points for distance histogram (histogram_sampling): $(p.histogram_sampling)
     Histogram bins (hist_bin_size): $(p.hist_bin_size)
+    Minimum number of histogram bins (min_bin_size): $(p.min_bin_size)
     Maximum histogram bin size (max_bin_portion): $(p.max_bin_portion)
     Sampling heuristic (sampling_heuristic): $(p.sampling_heuristic)
     Sampling factor (sampling_factor): $(p.sampling_factor)
@@ -107,23 +108,4 @@ show(io::IO, p::Parameters) =
     MDL quantizing error (mdl_quant_error): $(p.mdl_quant_error)
     MDL compression ratio threshold (mdl_compres_ratio): $(p.mdl_compres_ratio)
     Creation of bounded linear manifold clusters (bounded_cluster): $(p.bounded_cluster)
-    Separation algorithm (sep_algo): $(p.sep_algo)
-    Log level (log_level): $(p.log_level)""")
-
-# Logger
-# RED (31): Error (1)
-# BLUE (34): Info (2)
-# DEBUG (32): Debug (3)
-# DEV (36): Development (4)
-# Trace (33): Trace (5)
-function LOG(p::Parameters, lvl, msg...)
-    if p.log_level < lvl
-        return
-    else
-        #prefix = lvl == 1 ? "\e[1;34mINFO" : (lvl == 2 ? "\e[1;32mDEBUG" : "\e[1;33mTRACE")
-        #println(prefix, ": ", msg..., "\e[0m")
-        prefix = lvl == 1 ? "\e[1;31m" : (lvl == 2 ? "\e[1;34m" :
-            (lvl == 3 ? "\e[1;32m" : (lvl == 4 ? "\e[1;36m" : "\e[1;33m")))
-        println(prefix, msg..., "\e[0m")
-    end
-end
+    Separation algorithm (sep_algo): $(p.sep_algo)""")

@@ -22,6 +22,7 @@ function separation(::Type{T}, xs::Vector{S};
 
         Separation(depth(thresh), discriminability, threshold, minIdx, minX, maxX, bins)
     catch ex
+        LOG(5, ex.msg)
         Separation(0.0, 0.0, maxX, 0, minX, maxX, bins)
     end
 end

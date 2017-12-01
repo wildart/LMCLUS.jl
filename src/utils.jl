@@ -184,9 +184,10 @@ end
 check_separation(sep::Separation, params::Parameters) = criteria(sep) < params.best_bound
 
 function log_separation(sep::Separation, params::Parameters)
-    LOG(params, 4, "separation: width=", sep.discriminability, "  depth=", sep.depth)
-    LOG(params, 4, "  criteria: $(criteria(sep)) (best bound=$(params.best_bound))")
-    LOG(params, 4, " threshold: $(threshold(sep))")
+    LOG(4, "separation: width=", sep.discriminability, "  depth=", sep.depth)
+    LOG(4, "  criteria: $(criteria(sep)) (best bound=$(params.best_bound))")
+    LOG(4, " threshold: $(threshold(sep))")
+    LOG(4, " globalmin: $(sep.globalmin)")
 end
 
 # Calculates distance from point to manifold defined by basis
@@ -208,6 +209,7 @@ end
 
 distance_to_manifold(point::AbstractVector, origin::AbstractVector, basis::AbstractMatrix) =
     distance_to_manifold(point - origin, basis)
+
 function origstats(H::Vector{T}) where T <: Real
     N = length(H)
 
@@ -265,7 +267,7 @@ function refstats(H::Vector{T}) where T <: Real
 	return hcat(p, q, u, v, s2, t2)
 end
 
-function recurstats(H::Vector{T}, n::Int) where T <: Real
+function histstats(H::Vector{T}, n::Int) where T <: Real
     N = length(H)
     S = zeros(N,6)
 
@@ -318,7 +320,7 @@ function find_global_min(J::Vector{T}, tol::T) where {T<:Real}
         lmin += 1
     end
 
-    depth = 0
+    depth = 0.0
     global_min = 0
     if lmin == N
         throw(LMCLUSException("No minimum found, unimode histogram"))
@@ -360,7 +362,7 @@ function find_global_min(J::Vector{T}, tol::T) where {T<:Real}
     end
 
     if depth < tol
-        throw(LMCLUSException("No minimum found, unimode histogram"))
+        throw(LMCLUSException("Separation depth ($depth) beyond the tolerance level ($tol). Presume unimode histogram."))
     end
 
     depth, global_min

@@ -24,12 +24,12 @@ export  lmclus,
         manifolds
 
 include("types.jl")
+include("logger.jl")
 include("params.jl")
 include("results.jl")
 include("utils.jl")
 include("separation.jl")
 include("mdl.jl")
-include("zerodim.jl")
 include("deprecates.jl")
 
 #
@@ -59,7 +59,7 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
     # Check if manifold maximum dimension is less then full dimension
     if N <= params.max_dim
         params.max_dim = N - 1
-        LOG(params, 1, "Adjusting maximum manifold dimension to $(params.max_dim)")
+        LOG(1, "Adjusting maximum manifold dimension to $(params.max_dim)")
     end
 
     # Main loop through dataset
@@ -73,7 +73,7 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
         push!(separations, best_separation)
 
         number_of_clusters += 1
-        LOG(params, 2, @sprintf("found cluster #%d, size=%d, dim=%d",
+        LOG(2, @sprintf("found cluster #%d, size=%d, dim=%d",
             number_of_clusters, length(labels(best_manifold)), indim(best_manifold)))
 
         # Stop clustering if found specified number of clusters
@@ -85,7 +85,7 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
 
     # Rest of the points considered as noise
     if length(index) > 0
-        LOG(params, 2, "outliers: $(length(index)), 0D cluster formed")
+        LOG(2, "outliers: $(length(index)), 0D cluster formed")
         em = emptymanifold(0, index)
         em.μ = zeros(T, N)
         em.proj = zeros(T, N, 0)
@@ -132,18 +132,18 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
             # partition cluster from the dataset
             append!(filtered, removed)
 
-            LOG(params, 3, "separated points: ", length(selected))
+            LOG(3, "separated points: ", length(selected))
             separations += 1
         end
 
         if length(selected) <= params.min_cluster_size # no more points left - finish clustering
-            LOG(params, 3, "noise: dataset size < ", params.min_cluster_size," points")
+            LOG(3, "noise: dataset size < ", params.min_cluster_size," points")
             break
         end
 
         # perform basis adjustent
         if params.basis_alignment && outdim(best_manifold) > 0
-            LOG(params, 3, "manifold: perform basis adjustment...")
+            LOG(3, "manifold: perform basis adjustment...")
             adjustbasis!(best_manifold, X)
             origin = mean(best_manifold)
             basis  = projection(best_manifold)
@@ -172,7 +172,7 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
 
         # Estimate second bound for the cluster
         if params.bounded_cluster && outdim(best_manifold) > 0
-            LOG(params, 3, "manifold: separating within manifold subspace...")
+            LOG(3, "manifold: separating within manifold subspace...")
             origin = mean(best_manifold)
             basis  = projection(best_manifold)
             orth_separation = find_separation(view(X, :, labels(best_manifold)),
@@ -197,7 +197,7 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
             end
         end
 
-        LOG(params, 3, "no separation, ", sep_dim == params.max_dim ? "forming cluster..." : "increasing dimension...")
+        LOG(3, "no separation, ", sep_dim == params.max_dim ? "forming cluster..." : "increasing dimension...")
 
         # check compression ratio
         if params.mdl && indim(best_manifold) > 0 && separations > 0
@@ -209,10 +209,10 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
             mraw = MDL.calculate(MDL.Raw, BM, BMdata, Pm, Pd)
 
             cratio = mraw/mmdl
-            LOG(params, 4, "MDL: $mmdl, RAW: $mraw, COMPRESS: $cratio")
+            LOG(4, "MDL: $mmdl, RAW: $mraw, COMPRESS: $cratio")
             if cratio < params.mdl_compres_ratio
-                LOG(params, 3, "MDL: low compression ration $cratio, required $(params.mdl_compres_ratio). Reject manifold... ")
-                LOG(params, 4, "$(length(selected))  $(length(filtered))  $(length(labels(best_manifold)))")
+                LOG(3, "MDL: low compression ration $cratio, required $(params.mdl_compres_ratio). Reject manifold... ")
+                LOG(4, "$(length(selected))  $(length(filtered))  $(length(labels(best_manifold)))")
 
                 # reset dataset to original state
                 append!(selected, filtered)
@@ -230,7 +230,7 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
         if outdim(best_manifold) == 0
             best_manifold.points = selected
         end
-        LOG(params, 3, "no linear manifolds found in data, noise cluster formed")
+        LOG(3, "no linear manifolds found in data, noise cluster formed")
         best_manifold.d = 0
     end
 
@@ -248,10 +248,10 @@ function find_separation_basis(X::Matrix{T}, lm_dim::Int,
                                found::Int=0) where {T<:Real}
     full_space_dim, data_size = size(X)
 
-    LOG(params, 3, "---------------------------------------------------------------------------------")
-    LOG(params, 3, "data size=", data_size,"   linear manifold dim=",
+    LOG(3, "---------------------------------------------------------------------------------")
+    LOG(3, "data size=", data_size,"   linear manifold dim=",
             lm_dim,"   space dim=", full_space_dim,"   searching for separation")
-    LOG(params, 3, "---------------------------------------------------------------------------------")
+    LOG(3, "---------------------------------------------------------------------------------")
 
     # determine number of samples of lm_dim+1 points
     Q = sample_quantity( lm_dim, full_space_dim, data_size, params, found)
@@ -285,7 +285,7 @@ function find_separation_basis(X::Matrix{T}, lm_dim::Int,
     # bad sampling
     cr = criteria(best_sep)
     if cr <= 0.
-        LOG(params, 4, "no good histograms to separate data !!!")
+        LOG(4, "no good histograms to separate data !!!")
     end
     return best_sep, best_origin, best_basis
 end
@@ -303,7 +303,7 @@ function sample_manifold(X::Matrix{T}, lm_dim::Int,
             continue
         end
         origin, basis = form_basis(X, sample)
-        sep = find_separation(X, origin, basis, params)
+        sep = find_separation(X, origin, basis, params, debug=true)
         if criteria(sep) > criteria(best_sep)
             best_sep = sep
             best_origin = origin
@@ -337,7 +337,7 @@ function find_separation(X::AbstractMatrix, origin::AbstractVector,
         n4= round(Int, n3)
         n= ( size(X, 2) <= n4 ? size(X, 2)-1 : n4 )
 
-        LOG(params, 4, "find_separation: try to find $n samples")
+        LOG(4, "find_separation: try to find $n samples")
         sampleIndex = sample_points(X, n)
     end
 
@@ -346,7 +346,8 @@ function find_separation(X::AbstractMatrix, origin::AbstractVector,
                                      origin, basis, ocss = ocss)
     # define histogram size
     bins = hist_bin_size(distances, params)
-    return separation(LMCLUS.Kittler, distances, bins=bins)
+    # perform separation
+    return separation(params.sep_algo, distances, bins=bins, debug=debug)
 end
 
 # Determine the number of times to sample the data in order to guaranty
@@ -367,7 +368,7 @@ function sample_quantity(k::Int, full_space_dim::Int, data_size::Int,
     N = abs(log10(params.error_bound)/log10(1-P))
     num_samples = 0
 
-    LOG(params, 4, "number of samples by first heuristic=", N, ", by second heuristic=", data_size*params.sampling_factor)
+    LOG(4, "number of samples by first heuristic=", N, ", by second heuristic=", data_size*params.sampling_factor)
 
     if params.sampling_heuristic == 1
         num_samples = isinf(N) ? typemax(Int) : round(Int, N)
@@ -380,16 +381,17 @@ function sample_quantity(k::Int, full_space_dim::Int, data_size::Int,
     end
     num_samples = num_samples > 1 ? num_samples : 1
 
-    LOG(params, 3, "number of samples=", num_samples)
+    LOG(3, "number of samples=", num_samples)
 
     num_samples
 end
 
 # Calculate histogram size
 function hist_bin_size(xs::Vector, params::Parameters)
-    return params.hist_bin_size == 0 ?
+    bns = params.hist_bin_size == 0 ?
         round(Int, length(xs) * params.max_bin_portion) :
         params.hist_bin_size
+    return max(params.min_bin_size, bns)
 end
 
 # Determine the distance of each point in the dataset from to a linear manifold (batch-function)
