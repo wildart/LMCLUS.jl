@@ -32,6 +32,10 @@ include("separation.jl")
 include("mdl.jl")
 
 global DEBUG = false
+function debug!()
+    global DEBUG
+    DEBUG = !DEBUG
+end
 
 #
 # Linear Manifold Clustering
@@ -348,7 +352,7 @@ function find_separation(X::AbstractMatrix, origin::AbstractVector,
         n4= round(Int, n3)
         n= ( size(X, 2) <= n4 ? size(X, 2)-1 : n4 )
 
-        LOG(4, "find_separation: try to find $n samples")
+        LOG(4, "sample distances for histogram: $n samples")
         sampleIndex = sample_points(X, n)
     end
 
@@ -424,6 +428,11 @@ function gethistogrambins(x::Vector, max_bin_portion::Float64, hist_bin_size::In
             xmin = x[i]
         end
         bns = round(Int, xrng/binwidth)
+
+        # deal with special cases
+        if bns > l
+            bns = ceil(Int, log2(l))+1 # Sturges' formula
+        end
     end
     return max(min_bin_num, bns) # special cases: use max bin size
 end

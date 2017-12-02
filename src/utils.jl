@@ -28,7 +28,7 @@ Sample randomly lm_dim+1 points from the dataset, making sure
 that the same point is not sampled twice. the function will return
 a index vector, specifying the index of the sampled points.
 """
-function sample_points(X::Matrix{T}, n::Int) where T <: Real
+function sample_points(X::AbstractMatrix{T}, n::Int) where T <: Real
     if n <= 0
         error("Sample size must be positive")
     end
@@ -77,7 +77,7 @@ function sample_points(X::Matrix{T}, n::Int) where T <: Real
 end
 
 """Reservoir sampling"""
-function sample_points(X::Matrix{T}, k::Int, r::MersenneTwister) where T <: Real
+function sample_points(X::AbstractMatrix{T}, k::Int, r::MersenneTwister) where T <: Real
     N, n = size(X)
     if n < k
         warn("Not enough samples to construct manifold")

@@ -42,7 +42,7 @@ using Distributions
                         X[i,c] = rand()*R - R/2.
                     end
                 end
-                if distance_to_manifold(X[:,c], B) < θ
+                if distance_to_manifold(X[:,c], B)[1] < θ
                     c += 1
                 end
             end
