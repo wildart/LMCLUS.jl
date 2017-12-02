@@ -147,16 +147,17 @@ function project(m::Manifold, X::Matrix{T}) where T <: Real
     return proj
 end
 
-function filter_separated(selected_points, X, O, B, S)
+function filter_separated(selected_points, X, O, B, S; ocss=false)
     cluster_points = Int[]
     removed_points  = Int[]
     θ = threshold(S)
+    ii = ocss ? 2 : 1
 
     for i in eachindex(selected_points)
         idx = selected_points[i]
         # point i has distances less than the threshold value
         d = distance_to_manifold(X[:, idx], O, B)
-        if d < θ
+        if d[ii] < θ
             push!(cluster_points, idx)
         else
             push!(removed_points, idx)
@@ -185,28 +186,8 @@ function log_separation(sep::Separation, params::Parameters)
     LOG(4, "separation: width=", sep.discriminability, "  depth=", sep.depth)
     LOG(4, "  criteria: $(criteria(sep)) (best bound=$(params.best_bound))")
     LOG(4, " threshold: $(threshold(sep)) in [$(sep.mindist), $(sep.maxdist)]")
-    LOG(4, " globalmin: $(sep.globalmin)")
+    LOG(4, " globalmin: $(sep.globalmin), total bins: $(sep.bins)")
 end
-
-# Calculates distance from point to manifold defined by basis
-# Note: point should be translated wrt manifold origin
-function distance_to_manifold(point::AbstractVector, basis::AbstractMatrix)
-    d_n = 0.0
-    d_v = basis' * point
-    c = sum(abs2, point)
-    b = sum(abs2, d_v)
-    if c >= b
-        d_n = sqrt(c-b)
-        if d_n > 1e10
-            warn("Distance is too large: $(point) -> $(d_v) = $(d_n)")
-            d_n = 0.0
-        end
-    end
-    return d_n
-end
-
-distance_to_manifold(point::AbstractVector, origin::AbstractVector, basis::AbstractMatrix) =
-    distance_to_manifold(point - origin, basis)
 
 function origstats(H::Vector{T}) where T <: Real
     N = length(H)

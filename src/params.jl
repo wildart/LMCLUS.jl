@@ -15,7 +15,7 @@ mutable struct Parameters
     "Fixed number of bins for the distance histogram"
     hist_bin_size::Int
     "Minimum number of bins for the distance histogram"
-    min_bin_size::Int
+    min_bin_num::Int
     "Minimum cluster size (or noise size) in order to prevent generation of small clusters"
     min_cluster_size::Int
     "Separation best bound value is used for evaluating a goodness of separation characterized by a discriminability and a depth between modes of a distance histogram."
@@ -60,7 +60,7 @@ mutable struct Parameters
         1000,     # stop_after_cluster
         false,    # force_max_dim
         0,        # hist_bin_size
-        7,        # min_bin_size
+        7,        # min_bin_num
         20,       # min_cluster_size
         1.0,      # best_bound
         0.0001,   # error_bound
@@ -94,7 +94,7 @@ show(io::IO, p::Parameters) =
     Error bound (error_bound): $(p.error_bound)
     Sample points for distance histogram (histogram_sampling): $(p.histogram_sampling)
     Histogram bins (hist_bin_size): $(p.hist_bin_size)
-    Minimum number of histogram bins (min_bin_size): $(p.min_bin_size)
+    Minimum number of histogram bins (min_bin_num): $(p.min_bin_num)
     Maximum histogram bin size (max_bin_portion): $(p.max_bin_portion)
     Sampling heuristic (sampling_heuristic): $(p.sampling_heuristic)
     Sampling factor (sampling_factor): $(p.sampling_factor)

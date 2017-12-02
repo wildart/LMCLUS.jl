@@ -31,6 +31,8 @@ include("utils.jl")
 include("separation.jl")
 include("mdl.jl")
 
+global DEBUG = false
+
 #
 # Linear Manifold Clustering
 #
@@ -116,7 +118,7 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
             log_separation(sep, params)
 
             # No good separation found
-            check_separation(sep, params) && break
+            criteria(sep) < params.best_bound && break
 
             # filter separated points
             selected, removed = filter_separated(selected, X, origin, basis, sep)
@@ -143,17 +145,17 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
         # perform basis adjustent
         if params.basis_alignment && outdim(best_manifold) > 0
             LOG(3, "manifold: perform basis adjustment...")
-            adjustbasis!(best_manifold, X)
+            adjustbasis!(best_manifold, X, adjust_dim=params.dim_adjustment)
             origin = mean(best_manifold)
             basis  = projection(best_manifold)
 
             # check if the adjusted basis provides better separation
             idxs = labels(best_manifold)
-            adj_basis_separation = find_separation(view(X, :, idxs), origin, basis, params, debug=true)
+            adj_basis_separation = find_separation(view(X, :, idxs), origin, basis, params)
             log_separation(adj_basis_separation, params)
 
             # check separation threshold
-            if check_separation(adj_basis_separation, params)
+            if criteria(adj_basis_separation) < params.best_bound
                 maxdist = extrema(adj_basis_separation)[2]
                 if best_manifold.θ > maxdist
                     best_manifold.θ = maxdist
@@ -174,19 +176,20 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
             LOG(3, "manifold: separating within manifold subspace...")
             origin = mean(best_manifold)
             basis  = projection(best_manifold)
-            orth_separation = find_separation(view(X, :, labels(best_manifold)),
-                                              origin, basis, params, ocss = true, debug=true)
+            idxs = labels(best_manifold)
+            orth_separation = find_separation(view(X, :, idxs),
+                                              origin, basis, params, ocss = true)
             log_separation(orth_separation, params)
 
             # check separation threshold
-            if check_separation(orth_separation, params)
+            if criteria(orth_separation) < params.best_bound
                 maxdist = extrema(orth_separation)[2]
-                if best_manifold.σ > maxdist
+                if best_manifold.σ <= maxdist
                     best_manifold.σ = maxdist
                 end
             else
                 # if found good separation, filter data and restart basis search
-                selected, removed = filter_separated(idxs, X, origin, basis, orth_separation)
+                selected, removed = filter_separated(idxs, X, origin, basis, orth_separation, ocss=true)
                 best_manifold.points = selected
                 best_manifold.σ = threshold(orth_separation)
                 # ???? what do we do with this separation
@@ -224,13 +227,22 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
         !params.force_max_dim && separations > 0 && break
     end
 
-    # Cannot find any manifold in data then form 0D cluster
+    # Cannot find any manifold in data then form last cluster
     if indim(best_manifold) == N
         if outdim(best_manifold) == 0
             best_manifold.points = selected
         end
-        LOG(3, "no linear manifolds found in data, noise cluster formed")
-        best_manifold.d = 0
+        LOG(3, "forming a cluster from the rest of $(outdim(best_manifold)) points")
+
+        # calculate basis from the left points
+        best_manifold.d = 1
+        adjustbasis!(best_manifold, X, adjust_dim=params.dim_adjustment)
+
+        # calculate bounds
+        best_manifold.θ = maximum(distance_to_manifold(view(X, :,selected), best_manifold))
+        if params.bounded_cluster
+            best_manifold.σ = maximum(distance_to_manifold(view(X, :,selected), best_manifold, ocss=true))
+        end
     end
 
     best_manifold, best_separation, filtered
@@ -302,7 +314,7 @@ function sample_manifold(X::Matrix{T}, lm_dim::Int,
             continue
         end
         origin, basis = form_basis(X, sample)
-        sep = find_separation(X, origin, basis, params, debug=true)
+        sep = find_separation(X, origin, basis, params)
         if criteria(sep) > criteria(best_sep)
             best_sep = sep
             best_origin = origin
@@ -321,7 +333,7 @@ Given a dataset `X`, an tanslation vector `origin` and set of basis vectors `bas
 """
 function find_separation(X::AbstractMatrix, origin::AbstractVector,
                          basis::AbstractMatrix, params::Parameters;
-                         ocss::Bool = false, debug::Bool=false)
+                         ocss::Bool = false)
     # Define sample for distance calculation
     if params.histogram_sampling
         Z_01=2.576  # Z random variable, confidence interval 0.99
@@ -344,9 +356,9 @@ function find_separation(X::AbstractMatrix, origin::AbstractVector,
     distances = distance_to_manifold(params.histogram_sampling ? view(X, :,sampleIndex) : X ,
                                      origin, basis, ocss = ocss)
     # define histogram size
-    bins = hist_bin_size(distances, params)
+    bins = gethistogrambins(distances, params.max_bin_portion, params.hist_bin_size, params.min_bin_num)
     # perform separation
-    return separation(params.sep_algo, distances, bins=bins, debug=debug)
+    return separation(params.sep_algo, distances, bins=bins, debug=DEBUG)
 end
 
 # Determine the number of times to sample the data in order to guaranty
@@ -385,15 +397,41 @@ function sample_quantity(k::Int, full_space_dim::Int, data_size::Int,
     num_samples
 end
 
-# Calculate histogram size
-function hist_bin_size(xs::Vector, params::Parameters)
-    bns = params.hist_bin_size == 0 ?
-        round(Int, length(xs) * params.max_bin_portion) :
-        params.hist_bin_size
-    return max(params.min_bin_size, bns)
+"""Calculate histogram size
+
+Given a `x` value vector, the number of bins for the histogram is `hist_bin_size`.
+If `max_bin_portion` value is in closed unit range, then the number of bins estimated from the bin size determined as `x_n+i - x_i`,
+i.e. find the smallest difference between i successive points, where `x_n` is a point with index `n`,
+and `i` is the max number of points we allow to be stored in a single bin.
+
+*Note: the number of bins cannot be less then `min_bin_num`*
+"""
+function gethistogrambins(x::Vector, max_bin_portion::Float64, hist_bin_size::Int, min_bin_num::Int)
+    bns = hist_bin_size
+    if max_bin_portion > 0.0
+        l = length(x)
+        sort!(x)
+        xmin, xmax = x[1], x[end]
+        xrng = xmax - xmin
+        mbp = round(Int, l * max_bin_portion)
+
+        binwidth = xmax
+        for i in mbp:mbp:l
+            diff = x[i] - xmin
+            if binwidth > diff && diff > 0.0
+                binwidth = diff
+            end
+            xmin = x[i]
+        end
+        bns = round(Int, xrng/binwidth)
+    end
+    return max(min_bin_num, bns) # special cases: use max bin size
 end
 
-# Determine the distance of each point in the dataset from to a linear manifold (batch-function)
+"""Calculate the distances from points, `X`, to a linear manifold with `basis` vectors, translated to `origin` point.
+
+`ocss` parameter turns on the distance calculatation to orthogonal complement subspace of the given manifold.
+"""
 function distance_to_manifold(X::AbstractMatrix{T}, origin::Vector{T}, basis::Matrix{T};
                               ocss::Bool = false) where {T<:Real}
     N, n = size(X)
@@ -419,5 +457,16 @@ function distance_to_manifold(X::AbstractMatrix{T}, origin::Vector{T}, basis::Ma
     end
     return distances
 end
+distance_to_manifold(X::AbstractMatrix{T}, M::Manifold; ocss::Bool = false) where T<:Real =
+    distance_to_manifold(X, mean(M), projection(M), ocss=ocss)
+
+"""Calculate the distance from the `point` to the manifold, described by a `basis` matrix, and its orthoganal complement."""
+function distance_to_manifold(point::AbstractVector, basis::AbstractMatrix)
+    dpnt = sum(abs2, point)
+    dprj = sum(abs2, basis' * point)
+    return sqrt(abs(dpnt-dprj)), sqrt(dprj)
+end
+distance_to_manifold(point::AbstractVector, origin::AbstractVector, basis::AbstractMatrix) = distance_to_manifold(point - origin, basis)
+distance_to_manifold(point::AbstractVector, M::Manifold) = distance_to_manifold(point - mean(M), projection(M))
 
 end # module
