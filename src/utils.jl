@@ -181,12 +181,10 @@ function adjustbasis!(M::Manifold, X::AbstractMatrix;
     return M
 end
 
-check_separation(sep::Separation, params::Parameters) = criteria(sep) < params.best_bound
-
 function log_separation(sep::Separation, params::Parameters)
     LOG(4, "separation: width=", sep.discriminability, "  depth=", sep.depth)
     LOG(4, "  criteria: $(criteria(sep)) (best bound=$(params.best_bound))")
-    LOG(4, " threshold: $(threshold(sep))")
+    LOG(4, " threshold: $(threshold(sep)) in [$(sep.mindist), $(sep.maxdist)]")
     LOG(4, " globalmin: $(sep.globalmin)")
 end
 

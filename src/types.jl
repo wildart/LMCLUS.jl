@@ -68,7 +68,7 @@ Base.mean(M::Manifold) = M.μ
 Base.copy(M::Manifold) = Manifold(indim(M),mean(M),projection(M),labels(M),threshold(M)...)
 
 function Base.show(io::IO, M::Manifold)
-    print(io, "Manifold (dim = $(indim(M)), size = $(outdim(M)))")
+    print(io, "Manifold (dim = $(indim(M)), size = $(outdim(M)), (θ,σ)=$(threshold(M)))")
 end
 function Base.dump(io::IO, M::Manifold)
     show(io, M)

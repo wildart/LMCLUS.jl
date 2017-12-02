@@ -17,7 +17,7 @@ function separation(::Type{T}, xs::Vector{S};
 
         minIdx = minimum(thresh)
         s = stats(thresh)
-        threshold = minX + ( minIdx * (maxX - minX) / N )
+        threshold = minX + (minIdx + 1)*(maxX - minX)/N
         discriminability = (abs(s[minIdx,3]-s[minIdx,4]))/(sqrt(s[minIdx,5]+s[minIdx,6]))
 
         Separation(depth(thresh), discriminability, threshold, minIdx, minX, maxX, bins)
