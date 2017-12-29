@@ -345,6 +345,8 @@ function find_global_min(J::Vector{T}, tol::T) where {T<:Real}
     end
 
     depth, global_min
-function distances(M::Manifold, X::Matrix{T}) where T <: Real
+end
+
+function distances(M::Manifold, X::AbstractMatrix{<: Real})
     return distance_to_manifold(X[:,labels(M)], mean(M), projection(M))
 end

@@ -161,9 +161,8 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
 
             # check separation threshold
             if criteria(adj_basis_separation) < params.best_bound
-                maxdist = extrema(adj_basis_separation)[2]
-                if best_manifold.θ > maxdist
-                    best_manifold.θ = maxdist
+                if best_manifold.θ > threshold(adj_basis_separation)
+                    best_manifold.θ = threshold(adj_basis_separation)
                 end
             else
                 # if found good separation, filter data and restart basis search
@@ -188,9 +187,8 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
 
             # check separation threshold
             if criteria(orth_separation) < params.best_bound
-                maxdist = extrema(orth_separation)[2]
-                if best_manifold.σ <= maxdist
-                    best_manifold.σ = maxdist
+                if best_manifold.σ <= threshold(orth_separation)
+                    best_manifold.σ = threshold(orth_separation)
                 end
             else
                 # if found good separation, filter data and restart basis search
@@ -363,7 +361,7 @@ function find_separation(X::AbstractMatrix, origin::AbstractVector,
     # define histogram size
     bins = gethistogrambins(distances, params.max_bin_portion, params.hist_bin_size, params.min_bin_num)
     # perform separation
-    return separation(params.sep_algo, distances, bins=bins, debug=DEBUG)
+    return separation(params.sep_algo, distances, bins=bins, debug=DEBUG, distzscore=params.maximal_distance_zscore)
 end
 
 # Determine the number of times to sample the data in order to guaranty

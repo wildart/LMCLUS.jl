@@ -2,7 +2,7 @@ using StatsBase
 
 """Perform the dataset `xs` separation by thresholding a dataset `bins`ed histogram based on the algorith `T`"""
 function separation(::Type{T}, xs::Vector{S};
-                    bins = 20, tol = 1.0e-5,
+                    bins = 20, tol = 1.0e-5, distzscore = Inf,
                     debug = false) where {T <: Thresholding, S <: Real}
     minX, maxX = extrema(xs)
 
@@ -23,7 +23,8 @@ function separation(::Type{T}, xs::Vector{S};
         Separation(depth(thresh), discriminability, threshold, minIdx, minX, maxX, bins)
     catch ex
         LOG(5, ex.msg)
-        Separation(0.0, 0.0, maxX, 0, minX, maxX, bins) # threshold is set to maximal element
+        threshold, minIdx = findmax(xs[zscore(xs) .< distzscore]) # use distance z-scores to filter outliers
+        Separation(0.0, 0.0, threshold, minIdx, minX, maxX, bins) # threshold is set to maximal element
     end
 end
 

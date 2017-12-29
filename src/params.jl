@@ -50,6 +50,8 @@ mutable struct Parameters
     mdl_compres_ratio::Float64
     "Enable creation of bounded linear manifold clusters"
     bounded_cluster::Bool
+    "Maximal cluster distance z-score"
+    maximal_distance_zscore::Float64
     "Separation threshold algorithm"
     sep_algo::DataType
 
@@ -78,6 +80,7 @@ mutable struct Parameters
         0.001,    # mdl_quant_error
         1.05,     # mdl_compres_ratio
         false,    # bounded_cluster
+        3.09,     # maximal_distance_zscore
         Kittler   # sep_algo
     )
 end
@@ -108,4 +111,5 @@ show(io::IO, p::Parameters) =
     MDL quantizing error (mdl_quant_error): $(p.mdl_quant_error)
     MDL compression ratio threshold (mdl_compres_ratio): $(p.mdl_compres_ratio)
     Creation of bounded linear manifold clusters (bounded_cluster): $(p.bounded_cluster)
+    Maximal cluster distance z-score (maximal_distance_zscore): $(p.maximal_distance_zscore)
     Separation algorithm (sep_algo): $(p.sep_algo)""")

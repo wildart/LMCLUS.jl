@@ -37,7 +37,7 @@ end
 
 The interior boundary of A, denoted is the subset of all members of A connected to Aᶜ: Iᵦ(A) = {a ∈ A | ({a}, Aᶜ) ∉ S}
 """
-function fit(::Type{SeparationInteriorBoundary}, SR::Function, M::Manifold, X::Matrix{T}) where T <: Real
+function fit(::Type{SeparationInteriorBoundary}, SR::Function, M::Manifold, X::AbstractMatrix{T}) where T <: Real
     L = labels(M)
     # construct complement
     Aᶜ = symdiff(collect(1:size(X,2)), L)
