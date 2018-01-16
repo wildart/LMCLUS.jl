@@ -143,7 +143,6 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
 
         # get thresholds
         θ, σ = Inf, Inf
-        println(sep_dim)
 
         # search appropriate linear manifold subspace for best distance separation
         while true
@@ -260,8 +259,10 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
 
         # calculate bounds
         best_manifold.θ = maximum(distance_to_manifold(view(X, :,selected), best_manifold))
-        if params.bounded_cluster
-            best_manifold.σ = maximum(distance_to_manifold(view(X, :,selected), best_manifold, ocss=true))
+        best_manifold.σ = if params.bounded_cluster
+            maximum(distance_to_manifold(view(X, :,selected), best_manifold, ocss=true))
+        else
+            Inf
         end
     end
 

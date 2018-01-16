@@ -81,7 +81,7 @@ using Combinatorics
 	res = lmclus(data,p)
 	@test nclusters(res) >= 3
 	@test threshold(manifold(res,1))[1] > 0.0
-	@test threshold(manifold(res,1))[2] == 0.0
+	@test threshold(manifold(res,1))[2] == Inf
 	p.basis_alignment = false
 
 	# calculate cluster bounsds
