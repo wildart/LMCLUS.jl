@@ -70,7 +70,7 @@ function sample_points(X::AbstractMatrix{T}, n::Int) where T <: Real
     # If at this point we do not have proper sample
     # then our dataset doesn't have enough unique rows
     if length(I) < n
-        warn("Dataset doesn't have enough unique points, decrease number of points")
+        warn("Dataset doesn't have enough unique points, decrease number of sampled points")
         I = Int[]
     end
     return I
