@@ -19,7 +19,6 @@ struct Separation
     "Number of bins in the histogram"
     bins::Int
 end
-# Separation() = Separation(-Inf, eps(), Inf, -1, Float64[])
 Separation() = Separation(0.0, 0.0, 0.0, 0, 0.0, 0.0, 0)
 
 # properties

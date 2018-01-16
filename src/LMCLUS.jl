@@ -21,7 +21,8 @@ export  lmclus,
         counts,
         assignments,
         manifold,
-        manifolds
+        manifolds,
+        LMCLUSResult
 
 include("types.jl")
 include("logger.jl")
@@ -102,6 +103,29 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
 end
 
 # Find manifold in multiple dimensions
+# The algorith contains following state machine:
+# 0. Set inspected subspace dimension to 1.
+# 1. Find linear subspace (translation & basis) with best possible separation
+# 2. Evaluate the separation criteria
+# 3. If separation criterion is met then
+# 3.1. Filter out points within separation threshold
+# 3.2. Form cluster from the points and remove them from the dataset, go to 5.
+# 4. If separation criterion not is met then
+# 4.1. If the option is set and the manifold basis wasn't adjusted before then
+#      adjust the linear manifold basis of the cluster subspace and go to 2.
+# 4.2. If the option is set and the separation search within the manifold subspace wasn't performed then
+#      search for the separation within the manifold subspace and go to 2.
+# 5. If the number of points in the cluster is less then manimal acceptable size
+#    then go to 9.
+# 6. If the option is set and the separation was found then
+#    performe MDL evaluation of the former cluster.
+# 6.1. If compression ration is not met, return cluster points to the dataset
+#      then go to 8.
+# 7. Return the formed cluster.
+# 8. Increase the dimension of the inspected subspace
+# 8.1. If the subspace dimension equals to N-1, go to 9.
+# 8.2. Otherwise, go to 1.
+# 9. Form cluster from the rest of the dataset points.
 function find_manifold(X::Matrix{T}, index::Array{Int,1},
                        params::Parameters,
                        prngs::Vector{MersenneTwister},
@@ -115,92 +139,84 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
     sep_dim = params.min_dim
     while sep_dim <= params.max_dim
         separations = 0
+        state = :SEPARATION
+
+        # get thresholds
+        θ, σ = Inf, Inf
+        println(sep_dim)
 
         # search appropriate linear manifold subspace for best distance separation
         while true
-            sep, origin, basis = find_separation_basis(X[:, selected], sep_dim, params, prngs, found)
+
+            LOG(5, "state: $state, $best_manifold")
+            if state == :SEPARATION
+                # get separation manifold
+                sep, origin, basis = find_separation_basis(X[:, selected], sep_dim, params, prngs, found)
+            elseif state == :ALIGNMENT && params.basis_alignment && outdim(best_manifold) > 0
+                # check if the adjusted basis provides better separation
+                LOG(3, "manifold: perform basis adjustment...")
+                adjustbasis!(best_manifold, X, adjust_dim=params.dim_adjustment)
+                origin, basis = mean(best_manifold), projection(best_manifold)
+                idxs = labels(best_manifold)
+                sep = find_separation(view(X, :, idxs), origin, basis, params)
+            elseif state == :BOUND && params.bounded_cluster && outdim(best_manifold) > 0
+                # check if the bounded cluster provides better separation
+                LOG(3, "manifold: separating within manifold subspace...")
+                origin, basis = mean(best_manifold), projection(best_manifold)
+                idxs = labels(best_manifold)
+                sep = find_separation(view(X, :, idxs), origin, basis, params, ocss = true)
+            else
+                break
+            end
             log_separation(sep, params)
 
             # No good separation found
-            criteria(sep) < params.best_bound && break
+            if criteria(sep) < params.best_bound
+                currthr  = state == :BOUND ? σ : θ
+                thr = extrema(sep)[2]
+                if currthr > 0.0 && thr > 0.0
+                    currthr = min(currthr, thr)
+                end
+                if state == :BOUND
+                    σ = best_manifold.σ = currthr
+                else
+                    θ = best_manifold.θ = currthr
+                end
 
-            # filter separated points
-            selected, removed = filter_separated(selected, X, origin, basis, sep)
+                # swith to next state
+                state = (state == :SEPARATION) ? :ALIGNMENT :
+                        (state == :ALIGNMENT) ?  :BOUND     :
+                        (state == :BOUND) ?      :FINISHED  : :NONE
 
-            # small amount of points is considered noise, try to bump dimension
-            length(selected) <= params.min_cluster_size && break
+            else
+                thr = threshold(sep)
+                θ, σ  = state == :BOUND ? (θ, thr) : (thr, σ)
 
-            # create manifold cluster from good separation found
-            best_manifold = Manifold(sep_dim, origin, basis, selected, threshold(sep), 0.0)
-            best_separation = sep
+                # filter separated points
+                separated, removed = filter_separated(selected, X, origin, basis, sep,
+                                                    ocss=(state == :BOUND))
 
-            # partition cluster from the dataset
-            append!(filtered, removed)
+                # small amount of points is considered noise, try to bump dimension
+                length(separated) <= params.min_cluster_size && break
 
-            LOG(3, "separated points: ", length(selected))
-            separations += 1
+                # create manifold cluster from good separation found
+                best_manifold = Manifold(sep_dim, origin, basis, separated, θ, σ)
+                best_separation = sep
+
+                # partition cluster from the dataset
+                append!(filtered, removed)
+
+                # refine dataset
+                selected = separated
+                state = :SEPARATION
+                LOG(3, "separated points: ", length(selected))
+                separations += 1
+            end
         end
 
         if length(selected) <= params.min_cluster_size # no more points left - finish clustering
             LOG(3, "noise: dataset size < ", params.min_cluster_size," points")
             break
-        end
-
-        # perform basis adjustent
-        if params.basis_alignment && outdim(best_manifold) > 0
-            LOG(3, "manifold: perform basis adjustment...")
-            adjustbasis!(best_manifold, X, adjust_dim=params.dim_adjustment)
-            origin = mean(best_manifold)
-            basis  = projection(best_manifold)
-
-            # check if the adjusted basis provides better separation
-            idxs = labels(best_manifold)
-            adj_basis_separation = find_separation(view(X, :, idxs), origin, basis, params)
-            log_separation(adj_basis_separation, params)
-
-            # check separation threshold
-            if criteria(adj_basis_separation) < params.best_bound
-                maxdist = extrema(adj_basis_separation)[2]
-                if best_manifold.θ > maxdist
-                    best_manifold.θ = maxdist
-                end
-            else
-                # if found good separation, filter data and restart basis search
-                selected, removed = filter_separated(idxs, X, origin, basis, adj_basis_separation)
-                best_manifold.points = selected
-                best_manifold.θ = threshold(adj_basis_separation)
-                best_separation = adj_basis_separation
-                append!(filtered, removed)
-                continue
-            end
-        end
-
-        # Estimate second bound for the cluster
-        if params.bounded_cluster && outdim(best_manifold) > 0
-            LOG(3, "manifold: separating within manifold subspace...")
-            origin = mean(best_manifold)
-            basis  = projection(best_manifold)
-            idxs = labels(best_manifold)
-            orth_separation = find_separation(view(X, :, idxs),
-                                              origin, basis, params, ocss = true)
-            log_separation(orth_separation, params)
-
-            # check separation threshold
-            if criteria(orth_separation) < params.best_bound
-                maxdist = extrema(orth_separation)[2]
-                if best_manifold.σ <= maxdist
-                    best_manifold.σ = maxdist
-                end
-            else
-                # if found good separation, filter data and restart basis search
-                selected, removed = filter_separated(idxs, X, origin, basis, orth_separation, ocss=true)
-                best_manifold.points = selected
-                best_manifold.σ = threshold(orth_separation)
-                # ???? what do we do with this separation
-                #best_separation = adj_basis_separation
-                append!(filtered, removed)
-                continue
-            end
         end
 
         LOG(3, "no separation, ", sep_dim == params.max_dim ? "forming cluster..." : "increasing dimension...")
@@ -284,12 +300,10 @@ function find_separation_basis(X::Matrix{T}, lm_dim::Int,
     end
 
     # reduce values of manifolds from remote sources
-    best_sep = Separation()
-    best_origin = T[]
-    best_basis = zeros(0, 0)
+    best_sep, best_origin, best_basis = Separation(), zeros(T, 0), zeros(T, 0, 0)
     for (i, rr) in enumerate(arr)
         sep, origin, basis, mt = fetch(rr)
-        if criteria(sep) > criteria(best_sep)
+        if criteria(sep) > criteria(best_sep) # get largets separation
             best_sep = sep
             best_origin = origin
             best_basis = basis
@@ -298,8 +312,7 @@ function find_separation_basis(X::Matrix{T}, lm_dim::Int,
     end
 
     # bad sampling
-    cr = criteria(best_sep)
-    if cr <= 0.
+    if criteria(best_sep) <= 0.
         LOG(4, "no good histograms to separate data !!!")
     end
     return best_sep, best_origin, best_basis
@@ -466,13 +479,13 @@ function distance_to_manifold(X::AbstractMatrix{T}, origin::Vector{T}, basis::Ma
     end
     return distances
 end
-distance_to_manifold(X::AbstractMatrix{T}, M::Manifold; ocss::Bool = false) where T<:Real =
+distance_to_manifold(X::AbstractMatrix{<:Real}, M::Manifold; ocss::Bool = false) =
     distance_to_manifold(X, mean(M), projection(M), ocss=ocss)
 
 """Calculate the distance from the `point` to the manifold, described by a `basis` matrix, and its orthoganal complement."""
 function distance_to_manifold(point::AbstractVector, basis::AbstractMatrix)
     dpnt = sum(abs2, point)
-    dprj = sum(abs2, basis' * point)
+    dprj = sum(abs2, At_mul_B(basis,  point))
     return sqrt(abs(dpnt-dprj)), sqrt(dprj)
 end
 distance_to_manifold(point::AbstractVector, origin::AbstractVector, basis::AbstractMatrix) = distance_to_manifold(point - origin, basis)
