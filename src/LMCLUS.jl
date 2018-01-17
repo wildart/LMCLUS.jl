@@ -147,21 +147,21 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
 
         # search appropriate linear manifold subspace for best distance separation
         while true
-
             LOG(5, "state: $state, $best_manifold")
             if state == :SEPARATION
                 # get separation manifold
+                LOG(2, "manifold: find suitable subspace...")
                 sep, origin, basis = find_separation_basis(X[:, selected], sep_dim, params, prngs, found)
             elseif state == :ALIGNMENT && params.basis_alignment && outdim(best_manifold) > 0
                 # check if the adjusted basis provides better separation
-                LOG(3, "manifold: perform basis adjustment...")
+                LOG(2, "manifold: perform basis adjustment...")
                 adjustbasis!(best_manifold, X, adjust_dim=params.dim_adjustment)
                 origin, basis = mean(best_manifold), projection(best_manifold)
                 idxs = labels(best_manifold)
                 sep = find_separation(view(X, :, idxs), origin, basis, params)
             elseif state == :BOUND && params.bounded_cluster && outdim(best_manifold) > 0
                 # check if the bounded cluster provides better separation
-                LOG(3, "manifold: separating within manifold subspace...")
+                LOG(2, "manifold: separating within manifold subspace...")
                 origin, basis = mean(best_manifold), projection(best_manifold)
                 idxs = labels(best_manifold)
                 sep = find_separation(view(X, :, idxs), origin, basis, params, ocss = true)
@@ -197,20 +197,23 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
                                                     ocss=(state == :BOUND))
 
                 # small amount of points is considered noise, try to bump dimension
-                length(separated) <= params.min_cluster_size && break
+                if length(separated) <= params.min_cluster_size
+                    LOG(3, "separated points cannot form cluster. Its size is too small ($(length(separated))).")
+                    state = :FINISHED
+                else
+                    # create manifold cluster from good separation found
+                    best_manifold = Manifold(sep_dim, origin, basis, separated, θ, σ)
+                    best_separation = sep
 
-                # create manifold cluster from good separation found
-                best_manifold = Manifold(sep_dim, origin, basis, separated, θ, σ)
-                best_separation = sep
+                    # partition cluster from the dataset
+                    append!(filtered, removed)
 
-                # partition cluster from the dataset
-                append!(filtered, removed)
-
-                # refine dataset
-                selected = separated
-                state = :SEPARATION
-                LOG(3, "separated points: ", length(selected))
-                separations += 1
+                    # refine dataset
+                    selected = separated
+                    LOG(3, "separated points: ", length(selected))
+                    state = :SEPARATION
+                    separations += 1
+                end
             end
         end
 
