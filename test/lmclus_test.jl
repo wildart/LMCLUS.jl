@@ -46,7 +46,7 @@ using Combinatorics
 	@test threshold(s) ≈ 876.2634381305518
 
 	# run clustering
-	res = lmclus(data,p)
+	res = lmclus(data, p)
 	@test nclusters(res) >= 3
 	@test sum(counts(res)) == size(ds, 1)
 
@@ -60,25 +60,25 @@ using Combinatorics
 	# Sampling
 	p.histogram_sampling = true
 	p.number_of_clusters = 3
-	res = lmclus(data,p)
+	res = lmclus(data, p)
 	@test nclusters(res) >= 3
 	p.histogram_sampling = false
 
 	# RNG seed
 	p.random_seed = 0
-	res = lmclus(data,p)
+	res = lmclus(data, p)
 	@test nclusters(res) >= 3
 
 	# MDL
 	LMCLUS.MDL.type!(LMCLUS.MDL.SizeIndependent)
 	p.mdl = true
-	res = lmclus(data,p)
+	res = lmclus(data, p)
 	@test nclusters(res) >= 3
 	p.mdl = false
 
 	# adjust cluster bases
 	p.basis_alignment = true
-	res = lmclus(data,p)
+	res = lmclus(data, p)
 	@test nclusters(res) >= 3
 	@test threshold(manifold(res,1))[1] > 0.0
 	@test threshold(manifold(res,1))[2] == Inf
@@ -87,7 +87,7 @@ using Combinatorics
 	# calculate cluster bounsds
 	p.basis_alignment = true
 	p.bounded_cluster = true
-	res = lmclus(data,p)
+	res = lmclus(data, p)
 	@test nclusters(res) >= 3
 	@test threshold(manifold(res,1))[1] > 0.0
 	@test threshold(manifold(res,1))[2] > 0.0
@@ -97,9 +97,17 @@ using Combinatorics
 	# Otsu
 	p.sep_algo = LMCLUS.Otsu
 	p.min_cluster_size = 200
-	manifolds = lmclus(data,p)
+	res = lmclus(data, p)
 	@test nclusters(res) >= 3
 	p.sep_algo = LMCLUS.Kittler
 	p.min_cluster_size = 20
+
+	# Iterative refinement
+	dfun = (X,m)  -> distance_to_manifold(X, mean(m), projection(m))
+	efun = (X,ms) -> LMCLUS.MDL.calculate(LMCLUS.MDL.OptimalQuant, ms, X, 32, 16)
+	res2 = refine(res, data, dfun, efun)
+	@testset for (m1, m2) in zip(manifolds(res), manifolds(res))
+		@test all(labels(m1) .== labels(m2))
+	end
 
 end

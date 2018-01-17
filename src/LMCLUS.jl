@@ -22,7 +22,8 @@ export  lmclus,
         assignments,
         manifold,
         manifolds,
-        LMCLUSResult
+        LMCLUSResult,
+        refine
 
 include("types.jl")
 include("logger.jl")
