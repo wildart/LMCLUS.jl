@@ -31,8 +31,9 @@ Function returns refined `LMCLUSResult` object, after algorithm converges with t
 """
 function refine(res::LMCLUSResult, data::AbstractMatrix,
                 dfun::Function, efun::Function; bounds = false,
-                tol::Real = 10.0, maxiter::Integer = 100, debug = false)
-    M = manifolds(res)
+                tol::Real = 10.0, maxiter::Integer = 100, debug = false,
+                drop_last = true)
+    M = manifolds(res)[1:(drop_last ? end-1 : end)]
     Δ = efun(data, M)
 
     # main loop
@@ -61,7 +62,7 @@ function refine(res::LMCLUSResult, data::AbstractMatrix,
                 push!(M⁺, Manifold(indim(m), μ, B, I, θ, σ))
             end
         end
-        filter!(m->outdim(m) != 0, M)
+        filter!(m->outdim(m) != 0, M⁺)
 
         # evaluate new clustering
         Δ⁺ = sum(efun(data, m) for m in M⁺)
