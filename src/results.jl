@@ -32,7 +32,7 @@ Function returns refined `LMCLUSResult` object, after algorithm converges with t
 function refine(res::LMCLUSResult, data::AbstractMatrix,
                 dfun::Function, efun::Function; bounds = false,
                 tol::Real = 10.0, maxiter::Integer = 100, debug = false,
-                drop_last = true)
+                drop_last = true, min_cluster_size = 20)
     M = manifolds(res)[1:(drop_last ? end-1 : end)]
     Δ = efun(data, M)
 
@@ -43,12 +43,19 @@ function refine(res::LMCLUSResult, data::AbstractMatrix,
         c += 1
 
         D = map(m->outdim(m) > 0 ? dfun(data, m) : fill(Inf, size(data,2)), M)
-        A = mapslices(d->last(findmin(d)), hcat(D...), 2)
+        DM = hcat(D...)
+        A = mapslices(d->last(findmin(d)), DM, 2)
 
         # update assignments
         M⁺ = Manifold[]
         for (i,m) in enumerate(M)
             I = find(A .== i)
+            if length(I) < min_cluster_size
+                for ii in I
+                    A[ii] = sortperm(DM[ii,:])[2]
+                end
+                continue # reassign cluster points, effectivly removing it
+            end
             if length(I) > 0
                 X = data[:, I]
                 R = fit(PCA, X; maxoutdim = indim(m))
