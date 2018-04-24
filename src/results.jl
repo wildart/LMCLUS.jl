@@ -50,7 +50,7 @@ function refine(res::LMCLUSResult, data::AbstractMatrix,
         M⁺ = Manifold[]
         for (i,m) in enumerate(M)
             I = find(A .== i)
-            if length(I) < min_cluster_size
+            if length(I) < min_cluster_size #TODO: reassign points before modifing cluster parameters
                 for ii in I
                     A[ii] = sortperm(DM[ii,:])[2]
                 end
@@ -79,6 +79,37 @@ function refine(res::LMCLUSResult, data::AbstractMatrix,
         # check convergence
         converged = abs(Δ - Δ⁺) < tol
         Δ = Δ⁺
+    end
+
+    return LMCLUSResult(M, LMCLUS.Separation[])
+end
+
+"""Reassign outliers to the closes cluster in the clustering."""
+function clearoutliers(res::LMCLUSResult, data::AbstractMatrix,
+                       dfun::Function; debug = false)
+    M = manifolds(res)
+    indim(M[end]) != 0 && return res
+    O = pop!(M)
+
+    # evaluate distances to outliers
+    D = map(m->dfun(data, m), M)
+    OI = labels(O)
+    DM = hcat(D...)[OI, :]
+
+    # reassing outliers to available clusters
+    A = mapslices(d->last(findmin(d)), DM, 2)
+    for (i,a) in enumerate(A)
+        push!(labels(M[a]), OI[i])
+    end
+
+    # refine parameters of manifolds
+    for m in M
+        X = data[:, labels(m)]
+        R = fit(PCA, X; maxoutdim = indim(m))
+        m.μ = mean(R)
+        m.proj = projection(R)
+        m.θ = 0.0
+        m.σ = 0.0
     end
 
     return LMCLUSResult(M, LMCLUS.Separation[])
