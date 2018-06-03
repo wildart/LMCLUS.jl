@@ -50,45 +50,53 @@ using Distributions
             return X, manifold
         end
 
-        srand(923487298)
-
         Pm = 64      # Precision encoding constant for model
         Pd = 32      # Precision encoding constant for data
         N = 2        # Space dimension
         M = 1        # Linear manifold dimension
         C = 100      # Size of a LM cluster
         B = eye(N,M) # Basis vectors
-        bounds = [-1. 1.; -1. 1.] # LM cluster bounds
+        bounds = hcat(fill(-1.,N), fill(1., N)) # LM cluster bounds
         θ = 0.8      # distance threshold
         σs = [1.0, 0.25] # diag covariances
         ɛ = 1e-2
-
-        B *= rand()
-        Xg, Mg = generate_lm(N, M, C, B, bounds, θ, :Gausian; σs = σs)
-
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Raw, Mg, Xg, Pm, Pd) == Pm*N*C
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.ZeroDim, Mg, Xg, Pm, Pd) == 222
-
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Uniform, Mg, Xg, Pm, Pd)  == 5623
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Gaussian, Mg, Xg, Pm, Pd) == 3741
-
-        # Empirical entropy from optimal quantization
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Empirical, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3893
-        # Empirical entropy from fixed bin size quantization
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Empirical, Mg, Xg, Pm, Pd, ɛ = 20.0) == 3812
-        # Optimal quantizing
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.OptimalQuant, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 4097
-        @test LMCLUS.mdl(Mg, Xg, Pm, Pd, ɛ = 1e-2) == 4097
-
-        Mg.d = 0
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 9216
-        Mg.d = 1
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3136
+        tot = 1000
+        tol = 1e-8
 
         srand(923487298)
-        Xg, Mg = generate_lm(N, M, 10*C, B, bounds, θ, :Gausian; σs = σs)
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3136
+        B *= rand()
+
+        srand(923487298)
+        Xg, Mg = generate_lm(N, M, C, B, bounds, θ, :Gausian; σs = σs)
+        LMCLUS.adjustbasis!(Mg, Xg)
+        @test LMCLUS.hasfullbasis(Mg)
+
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Raw, Mg, Xg, Pm, Pd) == Pm*N*C
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.ZeroDim, Mg, Xg, Pm, Pd) == 221
+
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Uniform, Mg, Xg, Pm, Pd)  == 5623
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Gaussian, Mg, Xg, Pm, Pd) == 1739
+
+        # Empirical entropy from optimal quantization
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Empirical, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3889
+        # Empirical entropy from fixed bin size quantization
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Empirical, Mg, Xg, Pm, Pd, ɛ = 20.0) == 3808
+
         # Optimal quantizing
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.OptimalQuant, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 4093
+        @test LMCLUS.mdl(Mg, Xg, Pm, Pd, ɛ = 1e-2) == 4093
+
+        Mg.d = 0
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 9152
+        Mg.d = 1
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3008
+
+        # Test size dependence
+        srand(923487298)
+        Xg, Mg = generate_lm(N, M, 10*C, B, bounds, θ, :Gausian; σs = σs)
+        LMCLUS.adjustbasis!(Mg, Xg)
+        @test LMCLUS.hasfullbasis(Mg)
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.OptimalQuant, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 39306
         @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3136
 
     end

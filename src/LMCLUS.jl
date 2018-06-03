@@ -1,6 +1,6 @@
 module LMCLUS
 
-import MultivariateStats: MultivariateStats, PCA, fit, principalratio, indim, outdim, projection
+import MultivariateStats: PCA, fit, indim, outdim, projection
 import Clustering: ClusteringResult, assignments, counts, nclusters
 
 export  lmclus,
@@ -11,9 +11,8 @@ export  lmclus,
         Manifold,
         indim,
         outdim,
-        labels,
+        points,
         threshold,
-        mean,
         projection,
         criteria,
 
@@ -53,7 +52,7 @@ function lmclus(X::Matrix{T}, params::Parameters, np::Int=nprocs()) where {T<:Re
     return LMCLUSResult(lmclus(X, params, mts)...)
 end
 
-function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}) where {T<:Real}
+function lmclus(X::AbstractMatrix{T}, params::Parameters, prngs::Vector{MersenneTwister}) where T<:Real
 
     @assert length(prngs) >= nprocs() "Number of PRNGS cannot be less then processes."
 
@@ -81,7 +80,7 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
 
         number_of_clusters += 1
         LOG(2, @sprintf("found cluster #%d, size=%d, dim=%d",
-            number_of_clusters, length(labels(best_manifold)), indim(best_manifold)))
+            number_of_clusters, length(points(best_manifold)), outdim(best_manifold)))
 
         # Stop clustering if found specified number of clusters
         length(manifolds) == params.stop_after_cluster && break
@@ -93,10 +92,9 @@ function lmclus(X::Matrix{T}, params::Parameters, prngs::Vector{MersenneTwister}
     # Rest of the points considered as noise
     if length(index) > 0
         LOG(2, "outliers: $(length(index)), 0D cluster formed")
-        em = emptymanifold(0, index)
-        em.μ = zeros(T, N)
-        em.proj = zeros(T, N, 0)
-        push!(manifolds, em)
+        outliers = Manifold(0, zeros(T, N), zeros(T, N, 0), index)
+        params.basis_alignment && adjustbasis!(outliers, X, adjust_dim=params.dim_adjustment)
+        push!(manifolds, outliers)
         push!(separations, Separation())
     end
 
@@ -127,14 +125,14 @@ end
 # 8.1. If the subspace dimension equals to N-1, go to 9.
 # 8.2. Otherwise, go to 1.
 # 9. Form cluster from the rest of the dataset points.
-function find_manifold(X::Matrix{T}, index::Array{Int,1},
+function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
                        params::Parameters,
                        prngs::Vector{MersenneTwister},
-                       found::Int=0) where {T<:Real}
+                       found::Int=0) where T<:AbstractFloat
     filtered = Int[]
     selected = copy(index)
     N = size(X,1) # full space dimension
-    best_manifold = emptymanifold(N)
+    best_manifold = Manifold{T}(N)
     best_separation = Separation()
 
     sep_dim = params.min_dim
@@ -152,18 +150,18 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
                 # get separation manifold
                 LOG(2, "manifold: find suitable subspace...")
                 sep, origin, basis = find_separation_basis(X[:, selected], sep_dim, params, prngs, found)
-            elseif state == :ALIGNMENT && params.basis_alignment && outdim(best_manifold) > 0
+            elseif state == :ALIGNMENT && params.basis_alignment && size(best_manifold) > 0
                 # check if the adjusted basis provides better separation
                 LOG(2, "manifold: perform basis adjustment...")
                 adjustbasis!(best_manifold, X, adjust_dim=params.dim_adjustment)
                 origin, basis = mean(best_manifold), projection(best_manifold)
-                idxs = labels(best_manifold)
+                idxs = points(best_manifold)
                 sep = find_separation(view(X, :, idxs), origin, basis, params)
-            elseif state == :BOUND && params.bounded_cluster && outdim(best_manifold) > 0
+            elseif state == :BOUND && params.bounded_cluster && size(best_manifold) > 0
                 # check if the bounded cluster provides better separation
                 LOG(2, "manifold: separating within manifold subspace...")
                 origin, basis = mean(best_manifold), projection(best_manifold)
-                idxs = labels(best_manifold)
+                idxs = points(best_manifold)
                 sep = find_separation(view(X, :, idxs), origin, basis, params, ocss = true)
             else
                 break
@@ -225,19 +223,20 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
         LOG(3, "no separation, ", sep_dim == params.max_dim ? "forming cluster..." : "increasing dimension...")
 
         # check compression ratio
-        if params.mdl && indim(best_manifold) > 0 && separations > 0
+        if params.mdl && outdim(best_manifold) > 0 && separations > 0
             BM = best_manifold
             BMdata = X[:, selected]
             Pm = params.mdl_model_precision
             Pd = params.mdl_data_precision
-            mmdl = MDL.calculate(MDL.DefaultType, BM, BMdata, Pm, Pd, ɛ = params.mdl_quant_error)
+            adjustbasis!(BM, X) # needed to calculate MDL
+            mmdl = MDL.calculate(params.mdl_algo, BM, BMdata, Pm, Pd, ɛ = params.mdl_quant_error)
             mraw = MDL.calculate(MDL.Raw, BM, BMdata, Pm, Pd)
 
             cratio = mraw/mmdl
             LOG(4, "MDL: $mmdl, RAW: $mraw, COMPRESS: $cratio")
             if cratio < params.mdl_compres_ratio
                 LOG(3, "MDL: low compression ration $cratio, required $(params.mdl_compres_ratio). Reject manifold... ")
-                LOG(4, "$(length(selected))  $(length(filtered))  $(length(labels(best_manifold)))")
+                LOG(4, "$(length(selected))  $(length(filtered))  $(length(points(best_manifold)))")
 
                 # reset dataset to original state
                 append!(selected, filtered)
@@ -251,11 +250,11 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
     end
 
     # Cannot find any manifold in data then form last cluster
-    if indim(best_manifold) == N
-        if outdim(best_manifold) == 0
+    if outdim(best_manifold) == N
+        if size(best_manifold) == 0
             best_manifold.points = selected
         end
-        LOG(3, "forming a cluster from the rest of $(outdim(best_manifold)) points")
+        LOG(3, "forming a cluster from the rest of $(size(best_manifold)) points")
 
         # calculate basis from the left points
         best_manifold.d = 1
@@ -269,6 +268,8 @@ function find_manifold(X::Matrix{T}, index::Array{Int,1},
             Inf
         end
     end
+
+    params.basis_alignment && adjustbasis!(best_manifold, X, adjust_dim=params.dim_adjustment)
 
     best_manifold, best_separation, filtered
 end

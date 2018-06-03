@@ -33,41 +33,47 @@ function Base.show(io::IO, S::Separation)
 end
 
 "Linear manifold cluster"
-mutable struct Manifold
+mutable struct Manifold{T<:AbstractFloat}
     "Dimension of the manifold"
     d::Int
     "Translation vector that contains coordinates of the linear subspace origin"
-    μ::Vector{Float64}
+    μ::Vector{T}
     "Matrix of basis vectors that span the linear manifold"
-    proj::Matrix{Float64}
+    basis::Matrix{T}
     "Indexes of points associated with this cluster"
     points::Vector{Int}
     "Orthogonal subspace distance threshold"
-    θ::Float64
+    θ::T
     "Linear manifold subspace distance threshold"
-    σ::Float64
+    σ::T
 end
-Manifold(d::Int, μ::Vector{Float64}, proj::Matrix{Float64}, pnts::Vector{Int}) =
-    Manifold(d, μ, proj, pnts, 0.0, 0.0)
-Manifold() = Manifold(0, zeros(0), zeros(0,0), Int[])
+Manifold(d::Int, μ::Vector{T}, basis::Matrix{T}, pnts::Vector{Int}) where T<:AbstractFloat =
+    Manifold(d, μ, basis, pnts, zero(T), zero(T))
+Manifold{T}(d::Int) where T<:AbstractFloat = Manifold(d, zeros(T,d), zeros(T,d,d), Int[])
+Manifold() = Manifold{Float64}(0)
+
+Base.copy(M::Manifold) = Manifold(outdim(M),mean(M),projection(M),points(M),threshold(M)...)
 
 # properties
-"Returns a dimension of the linear manifold cluster."
-indim(M::Manifold) = M.d
-"Returns the number of points in the cluster."
-outdim(M::Manifold) = length(M.points)
+"Returns the dimension of the linear manifold cluster."
+outdim(M::Manifold) = M.d
+"Returns the dimension of the observation space."
+indim(M::Manifold) = length(M.μ)
 "Return an array of cluster assignments."
-labels(M::Manifold) = M.points
+points(M::Manifold) = M.points
 "Returns the cluster thresholds."
 threshold(M::Manifold) = (M.θ, M.σ)
 "Returns the matrix with columns corresponding to orthonormal vectors that span the linear manifold."
-projection(M::Manifold) = M.proj
+projection(M::Manifold) = M.basis[:,1:M.d]
 "Returns the translation vector `μ` which contains coordinates of the linear manifold origin."
 Base.mean(M::Manifold) = M.μ
-Base.copy(M::Manifold) = Manifold(indim(M),mean(M),projection(M),labels(M),threshold(M)...)
+"Returns the cluster size - a number of points assosiated with the cluster."
+Base.size(M::Manifold) = length(points(M))
+"""Checks if the manifold `M` contains a full basis."""
+hasfullbasis(M::Manifold) = size(M.basis,1) == size(M.basis,2)
 
 function Base.show(io::IO, M::Manifold)
-    print(io, "Manifold (dim = $(indim(M)), size = $(outdim(M)), (θ,σ)=$(threshold(M)))")
+    print(io, "Manifold (dim = $(outdim(M)), size = $(size(M)), (θ,σ)=$(threshold(M)))")
 end
 function Base.dump(io::IO, M::Manifold)
     show(io, M)

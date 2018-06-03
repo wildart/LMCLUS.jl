@@ -7,9 +7,17 @@ end
 
 nclusters(R::LMCLUSResult) = length(R.manifolds)
 
-counts(R::LMCLUSResult) = map(outdim, R.manifolds)
+counts(R::LMCLUSResult) = map(size, R.manifolds)
 
-assignments(R::LMCLUSResult) = assignments(R.manifolds)
+"Return points-to-cluster assignments"
+function assignments(R::LMCLUSResult)
+    Ms = manifolds(R)
+    A = zeros(Int, sum(map(m->size(m), Ms)))
+    for (i,m) in enumerate(Ms)
+        A[points(m)] = i
+    end
+    return A
+end
 
 """Get linear manifold cluster"""
 manifold(R::LMCLUSResult, idx::Int) = R.manifolds[idx]
@@ -42,7 +50,7 @@ function refine(res::LMCLUSResult, data::AbstractMatrix,
     while !converged && c < maxiter
         c += 1
 
-        D = map(m->outdim(m) > 0 ? dfun(data, m) : fill(Inf, size(data,2)), M)
+        D = map(m->size(m) > 0 ? dfun(data, m) : fill(Inf, size(data,2)), M)
         DM = hcat(D...)
         A = mapslices(d->last(findmin(d)), DM, 2)
 
@@ -58,18 +66,18 @@ function refine(res::LMCLUSResult, data::AbstractMatrix,
             end
             if length(I) > 0
                 X = data[:, I]
-                R = fit(PCA, X; maxoutdim = indim(m))
+                R = fit(PCA, X; pratio=1.0)
                 μ = mean(R)
                 B = projection(R)
-                θ = σ = 0.0
+                m = Manifold(outdim(m), mean(R), projection(R), I)
                 if bounds
-                    θ = maximum(distance_to_manifold(X, μ, B))
-                    σ = maximum(distance_to_manifold(X, μ, B, ocss=true))
+                    m.θ = maximum(distance_to_manifold(X, m))
+                    m.σ = maximum(distance_to_manifold(X, m, ocss=true))
                 end
-                push!(M⁺, Manifold(indim(m), μ, B, I, θ, σ))
+                push!(M⁺, m)
             end
         end
-        filter!(m->outdim(m) != 0, M⁺)
+        filter!(m->size(m) != 0, M⁺)
 
         # evaluate new clustering
         Δ⁺ = sum(efun(data, m) for m in M⁺)
@@ -88,26 +96,26 @@ end
 function clearoutliers(res::LMCLUSResult, data::AbstractMatrix,
                        dfun::Function; debug = false)
     M = manifolds(res)
-    indim(M[end]) != 0 && return res
+    outdim(M[end]) != 0 && return res
     O = pop!(M)
 
     # evaluate distances to outliers
     D = map(m->dfun(data, m), M)
-    OI = labels(O)
+    OI = points(O)
     DM = hcat(D...)[OI, :]
 
     # reassing outliers to available clusters
     A = mapslices(d->last(findmin(d)), DM, 2)
     for (i,a) in enumerate(A)
-        push!(labels(M[a]), OI[i])
+        push!(points(M[a]), OI[i])
     end
 
     # refine parameters of manifolds
     for m in M
-        X = data[:, labels(m)]
-        R = fit(PCA, X; maxoutdim = indim(m))
+        X = data[:, points(m)]
+        R = fit(PCA, X; maxoutdim = outdim(m))
         m.μ = mean(R)
-        m.proj = projection(R)
+        m.basis = projection(R)
         m.θ = 0.0
         m.σ = 0.0
     end

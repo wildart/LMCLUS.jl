@@ -27,17 +27,7 @@ This package implements the *LMCLUS* algorithm in the ``lmclus`` function:
     :param X:   The given sample matrix. Each column of ``X`` is a sample.
     :param p:   The clustering parameters as instance of :doc:`LMCLUSParameters </params>`.
 
-    This function returns an array of ``Manifold`` instances, which is defined as follows:
-
-    .. code-block:: julia
-
-        type Manifold
-            d::Int                     # Dimension of the manifold
-            mu::Vector{Float64}        # Translation vector
-            proj::Matrix{Float64}      # Matrix of basis vectors that span manifold
-            points::Vector{Int}        # Indexes of points associated with this cluster
-            separation::Separation     # Cluster separation parameters
-        end
+    This function returns an ``LMCLUSResult`` instance.
 
 Results
 -------
@@ -46,11 +36,19 @@ Let ``M`` be an instance of ``Manifold``, ``n`` be the number of observations, a
 
 .. function:: indim(M)
 
-    Returns a dimension of the linear manifold cluster which is the dimension of the subspace.
+    Returns a dimension of the observation space.
 
 .. function:: outdim(M)
 
+    Returns a dimension of the linear manifold cluster which is the dimension of the subspace.
+
+.. function:: size(M)
+
     Returns the number of points in the cluster which is the size of the cluster.
+
+.. function:: points(M)
+
+    Returns indexes of points assigned to the cluster.
 
 .. function:: mean(M)
 
@@ -80,13 +78,13 @@ Example
     params = LMCLUSParameters(5)
 
     # perform clustering and returns a collection of clusters
-    Ms = lmclus(X, params)
+    clust = lmclus(X, params)
 
     # pick the first cluster
-    M = Ms[1]
+    M = manifold(clust, 1)
 
     # obtain indexes of points assigned to the cluster
-    l = labels(M)
+    l = points(M)
 
     # obtain the linear manifold cluster translation vector
     mu = mean(M)

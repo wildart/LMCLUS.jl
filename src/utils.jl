@@ -1,6 +1,3 @@
-"""Empty manifold"""
-emptymanifold(N::Int, points::Vector{Int}=Int[]) = Manifold(N, zeros(N), eye(N,N), points, 0.0, 0.0)
-
 """Returns seed from parameters"""
 getseed(params::LMCLUS.Parameters) = params.random_seed == 0 ? time_ns() : params.random_seed
 
@@ -105,7 +102,7 @@ function sample_points(X::AbstractMatrix{T}, k::Int, r::MersenneTwister) where T
 end
 
 """Modified Gram-Schmidt orthogonalization algorithm"""
-function orthogonalize(vecs::AbstractMatrix{T}) where {T<:Real}
+function orthogonalize(vecs::AbstractMatrix{T}) where T<:Real
     m, n = size(vecs)
     basis = zeros(T, m, n)
     for j = 1:n
@@ -126,25 +123,10 @@ end
 # creating a basis matrix with one less vector than the number of sampled points.
 # Then perform orthogonalization through Gram-Schmidt process.
 # Note: Resulting basis is transposed.
-function form_basis(X::AbstractMatrix, sample::Vector{Int})
+function form_basis(X::AbstractMatrix{T}, sample::Vector{Int}) where T<:AbstractFloat
     origin = X[:,sample[1]]
     basis = X[:,sample[2:end]] .- origin
     vec(origin), orthogonalize(basis)
-end
-
-"Generate points-to-cluster assignments identifiers"
-function assignments(Ms::Vector{Manifold})
-    lbls = zeros(Int, sum(map(m->outdim(m), Ms)))
-    for (i,m) in enumerate(Ms)
-        lbls[labels(m)] = i
-    end
-    return lbls
-end
-
-"Projection of the data to the manifold"
-function project(m::Manifold, X::Matrix{T}) where T <: Real
-    proj = projection(m)'*(X.-mean(m))
-    return proj
 end
 
 function filter_separated(selected_points, X, O, B, S; ocss=false)
@@ -169,16 +151,16 @@ end
 
 function adjustbasis!(M::Manifold, X::AbstractMatrix;
                       adjust_dim::Bool=false, adjust_dim_ratio::Float64=0.99)
-    R = if indim(M) > 0 && !adjust_dim
-        fit(PCA, X[:, labels(M)]; maxoutdim=indim(M))
+    R = if outdim(M) > 0 && !adjust_dim
+        fit(PCA, X[:, points(M)]; pratio=1.0)
     else
-        fit(PCA, X[:, labels(M)]; pratio = adjust_dim_ratio)
+        fit(PCA, X[:, points(M)]; pratio = adjust_dim_ratio)
     end
     if adjust_dim
-        M.d = MultivariateStats.outdim(R)
+        M.d = outdim(R)
     end
-    M.μ = MultivariateStats.mean(R)
-    M.proj = MultivariateStats.projection(R)
+    M.μ = mean(R)
+    M.basis = projection(R)
     return M
 end
 
@@ -189,7 +171,7 @@ function log_separation(sep::Separation, params::Parameters)
     LOG(4, " globalmin: $(sep.globalmin), total bins: $(sep.bins)")
 end
 
-function origstats(H::Vector{T}) where T <: Real
+function origstats(H::Vector{T}) where T<:Real
     N = length(H)
 
     # calculate threshold
@@ -228,7 +210,7 @@ function origstats(H::Vector{T}) where T <: Real
     return S
 end
 
-function refstats(H::Vector{T}) where T <: Real
+function refstats(H::Vector{T}) where T<:Real
     x = 1:length(H)
 	A=cumsum(H)
 	B=cumsum(H.*x)
@@ -246,7 +228,7 @@ function refstats(H::Vector{T}) where T <: Real
 	return hcat(p, q, u, v, s2, t2)
 end
 
-function histstats(H::Vector{T}, n::Int) where T <: Real
+function histstats(H::Vector{T}, n::Int) where T<:Real
     N = length(H)
     S = zeros(N,6)
 
@@ -277,7 +259,7 @@ function histstats(H::Vector{T}, n::Int) where T <: Real
 	return S
 end
 
-function find_global_min(J::Vector{T}, tol::T) where {T<:Real}
+function find_global_min(J::Vector{T}, tol::T) where T<:Real
     N = length(J)
 
     # Mark minima
@@ -345,4 +327,20 @@ function find_global_min(J::Vector{T}, tol::T) where {T<:Real}
     end
 
     depth, global_min
+end
+
+"Projection of the data to the manifold or its orthoganal comppliment"
+function project(MC::Manifold{T}, X::AbstractMatrix{T}; ocs = true) where T<:Real
+    M = outdim(MC)
+    N = min(size(X)...)
+
+    @assert hasfullbasis(MC) "$MC must have full basis"
+    @assert M < N "Manifold dimension must be less then of the full space"
+
+    # change basis for data
+    r = ocs ? ((M+1):N) : (1:M)
+    BC = MC.basis[:,r]
+    Y = BC'*(X.-mean(MC))
+
+    return Y
 end

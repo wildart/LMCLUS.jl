@@ -1,7 +1,7 @@
 module MDL
 
-using StatsBase
-import ..LMCLUS: Manifold, indim, outdim, mean, projection, threshold, labels
+import StatsBase: fit, Histogram
+import ..LMCLUS: Manifold, indim, outdim, projection, threshold, points, hasfullbasis, project
 
 # Various types for MDL calculation
 abstract type MethodType end
@@ -15,11 +15,8 @@ struct Empirical <: MethodType end
 struct OptimalQuant <: MethodType end    # ICPR-2016 Eq. 6
 struct SizeIndependent <: MethodType end # ICPR-2016 Eq. 8
 
-# Set default method for MDL calculation
-DefaultType = OptimalQuant
-
 """Optimal number of bins given constant C over intervals"""
-function optbins(intervals::Vector{T}, C::T) where T <: Real
+function optbins(intervals::Vector{T}, C::T) where T<:AbstractFloat
     ns = ceil.(intervals * exp( (C - sum(intervals))/length(intervals) ), 0 )
     nsi = zeros(UInt, size(ns))
     for i in 1:length(nsi)
@@ -33,13 +30,13 @@ function optbins(intervals::Vector{T}, C::T) where T <: Real
 end
 
 """Variance of a uniform distribution over interval"""
-univar(interval::Vector{T}) where T <: Real = (1//12)*(interval).^2
+univar(interval::Vector{T}) where T<:AbstractFloat = (1//12)*(interval).^2
 
 """Quantizaton error"""
 quanterror(intervals, N_k_opt) = sum(univar(intervals./N_k_opt))
 
 """Optimal quantization of the interval"""
-function optquant(intervals::Vector{T}, ɛ::T; tot::Int = 1000, tol = 1e-6) where T <: Real
+function optquant(intervals::Vector{T}, ɛ::T; tot::Int = 1000, tol = 1e-6) where T<:AbstractFloat
     intervals[isnan.(intervals)] = eps() # remove nans
     intervals[intervals .< eps()] = eps() # remove 0s
     intervals[isinf.(intervals)] = 1. # remove inf
@@ -81,7 +78,7 @@ function boundingbox(X, m)
     n, l = size(X)
 
     # PCA data
-    F = svdfact(X'/sqrt(n))
+    F = svdfact(X./sqrt(n))
 
     # Take an orthogonal compliment subspace (OCS) basis
     r = if m < min(n,l)
@@ -89,7 +86,7 @@ function boundingbox(X, m)
     else
         1:min(n,l)
     end
-    BC = F[:V][:,r]
+    BC = F[:U][:,r]
 
     # Project data to OCS
     Y = BC'*X
@@ -97,9 +94,16 @@ function boundingbox(X, m)
     # Calculate data spread in OCS
     Ymin = vec(minimum(Y, 2))
     Ymax = vec(maximum(Y, 2))
-    intervals = abs.(Ymax - Ymin)
+    range = abs.(Ymax - Ymin)
 
-    return intervals, Y, Ymin, Ymax
+    return range, Y, Ymin, Ymax
+end
+
+function boundingbox(Y::AbstractMatrix{T}) where T<:AbstractFloat
+    Ymin = vec(minimum(Y, 2))
+    Ymax = vec(maximum(Y, 2))
+    Yrange = abs.(Ymax - Ymin)
+    return Yrange, Ymin, Ymax
 end
 
 
@@ -112,7 +116,7 @@ modeldl(::Type{Raw}, M::Manifold, X::Matrix, P::Int) = P*length(X)
 datadl(::Type{Raw}, aggs...) = 0
 
 function raw(M::Manifold, Pm::Int)
-    return Pm*outdim(M)*length(mean(M))
+    return Pm*size(M)*indim(M)
 end
 
 """Zero dimensional model description length: L(ZD)
@@ -129,11 +133,11 @@ end
     Ref: O. Georgieva, K. Tschumitschew, and F. Klawonn, “Cluster validity
     measures based on the minimum description length principle”
 """
-function datadl(::Type{ZeroDim}, C::Manifold, X::Matrix{T},
-                P::Int, ɛ::T, tot::Int, tol::T) where T <: Real
+function datadl(::Type{ZeroDim}, C::Manifold{T}, X::AbstractMatrix{T},
+                P::Int, ɛ::T, tot::Int, tol::T) where T<:AbstractFloat
     N = size(X,1)  # space dimension
     μ = mean(C)    # manifold translation
-    n = outdim(C)  # size of cluster
+    n = size(C)  # size of cluster
 
     E = 0.0
     for i in 1:n
@@ -155,7 +159,7 @@ end
 """
 function modeldl{MT<:MethodType}(::Type{MT}, C::Manifold, X::Matrix, P::Int)
     N = size(X,1)  # space dimension
-    M = indim(C)   # manifold dimension
+    M = outdim(C)   # manifold dimension
     return P*(N + M*(N - (M+1)>>1))
 end
 =#
@@ -166,7 +170,7 @@ end
 """
 function modeldl(::Type{MT}, C::Manifold, X::Matrix, P::Int) where MT <: MethodType
     N = size(X,1)  # space dimension
-    return if indim(C) != 0
+    return if outdim(C) != 0
         (P*N*(N+1))>>1
     else # for 0D manifold no basis encoding required
         P*N
@@ -176,14 +180,19 @@ end
 
 """Size independent data description length: L(X|SI)
 """
-function datadl(::Type{SizeIndependent}, C::Manifold, X::Matrix{T},
-                P::Int, ɛ::T, tot::Int, tol::T) where T <: Real
+function datadl(::Type{SizeIndependent}, C::Manifold{T}, X::AbstractMatrix{T},
+                P::Int, ɛ::T, tot::Int, tol::T) where T<:AbstractFloat
+    M = outdim(C)  # manifold dimension
     N = size(X,1)  # space dimension
-    M = indim(C)   # manifold dimension
-    μ = mean(C)    # manifold translation
 
-    intervals, _ = boundingbox(X.-μ, M)
-    bins, _ = optquant(intervals, ɛ, tot=tot, tol=tol)
+    # Project points to the orthogonal compliment space (OCS) of the manifold
+    Y = project(C, X)
+
+    # Get OCS bounding box
+    rngs, _ = boundingbox(Y)
+
+    # Estimate number of bins required for each component of OSC
+    bins, _ = optquant(rngs, ɛ, tot=tot, tol=tol)
 
     return convert(Int, P*(N + 2*sum(bins)))
 end
@@ -197,16 +206,15 @@ end
     Points in the orthogonal complement space of the linear manifold cluster
     are uniformly distributed around the cluster manifold.
 """
-function datadl(::Type{Uniform}, C::Manifold, X::Matrix{T},
-                P::Int, ɛ::T, tot::Int, tol::T) where T <: Real
-    N = size(X,1)  # space dimension
-    M = indim(C)   # manifold dimension
-    n = outdim(C)  # size of cluster
+function datadl(::Type{Uniform}, C::Manifold{T}, X::AbstractMatrix{T},
+                P::Int, ɛ::T, tot::Int, tol::T) where T<:AbstractFloat
+    M = outdim(C)  # manifold dimension
+    n = size(X,2)  # size of cluster
 
-    # Point projected on manifold
+    # Encoding size of point projected on manifold
     PR = P*M
 
-    # Entropy of point in the orthogonal complement space
+    # Entropy of points in the orthogonal complement space
     E = -float(n)*log(threshold(C)[1])
 
     # Number of bits of two parts for every point
@@ -219,24 +227,23 @@ end
     Points in the orthogonal complement space of the linear manifold cluster
     are normally distributed around the cluster manifold.
 """
-function datadl(::Type{Gaussian}, C::Manifold, X::Matrix{T},
-                P::Int, ɛ::T, tot::Int, tol::T) where T <: Real
-    N = size(X,1)  # space dimension
-    M = indim(C)   # manifold dimension
-    n = outdim(C)  # size of cluster
-    μ = mean(C)    # manifold translation
+function datadl(::Type{Gaussian}, C::Manifold{T}, X::AbstractMatrix{T},
+                P::Int, ɛ::T, tot::Int, tol::T) where T<:AbstractFloat
+    N, n = size(X)  # space dimension & size
+    M = outdim(C)   # manifold dimension
+    μ = mean(C)     # manifold translation
     B = projection(C) # manifold basis
 
-    # Point projected on manifold
+    # Encoding size of point projected on manifold
     PR = P*M
 
-    # project points to orthogonal complement subspace
+    # Change points basis to of orthogonal complement subspace
     OP = (eye(N) - B*B')*(X.-μ)
 
     # multivariate normal distribution entropy
     Σ = OP*OP'
     Σd = det(Σ)
-    E = (M/2)*(1+log(2π)) + (Σd > 0.0 ? log(Σd) : 0.0)/2
+    E = (M/2)*(1+log(2π)) + (Σd > eps() ? log(Σd) : 0.0)/2
 
     # Number of bits of two parts for every point
     return round(Int, (PR + E)*n)
@@ -249,22 +256,23 @@ end
     constructed by optimal quantizing with a fixed length bin, is used to
     calculate entropy, thus number of bits.
 """
-function datadl(::Type{Empirical}, C::Manifold, X::Matrix{T},
-                P::Int, ɛ::T, tot::Int, tol::T) where T <: Real
-    N = size(X,1)  # space dimension
-    M = indim(C)   # manifold dimension
-    n = outdim(C)   # manifold cluster size
-    μ = mean(C)    # manifold translation
+function datadl(::Type{Empirical}, C::Manifold{T}, X::AbstractMatrix{T},
+                P::Int, ɛ::T, tot::Int, tol::T) where T<:AbstractFloat
+    N, n = size(X) # space dimension & size
+    M = outdim(C)  # manifold dimension
 
-    # Point projected on manifold
+    # Encoding size of point projected on manifold
     PR = P*M
 
-    # Get orthogonal compliment space bounding box
-    intervals, Y, Ymin, Ymax = boundingbox(X.-μ, M)
+    # Project points to the orthogonal compliment space (OCS) of the manifold
+    Y = project(C, X)
+
+    # Get OCS bounding box
+    rngs, Ymin, Ymax = boundingbox(Y)
 
     # Estimate number of bins required for each competent of OSC
     if ɛ < 1. # using optimal quantization
-        bins, _ = optquant(intervals, ɛ, tot=tot, tol=tol)
+        bins, _ = optquant(rngs, ɛ, tot=tot, tol=tol)
     else      # constant number of bins per component
         bins = fill(round(Int,ɛ), N-M)
     end
@@ -288,21 +296,22 @@ end
     constructed by optimal quantizing with a fixed length bin, is used to
     calculate entropy, thus number of bits.
 """
-function datadl(::Type{OptimalQuant}, C::Manifold, X::Matrix{T},
-                P::Int, ɛ::T, tot::Int, tol::T) where T <: Real
-    N = size(X,1)  # space dimension
-    M = indim(C)   # manifold dimension
-    n = outdim(C)  # size of cluster
-    μ = mean(C)    # manifold translation
+function datadl(::Type{OptimalQuant}, C::Manifold{T}, X::AbstractMatrix{T},
+                P::Int, ɛ::T, tot::Int, tol::T) where T<:AbstractFloat
+    M = outdim(C)  # manifold dimension
+    n = size(X,2)  # size of cluster
 
-    # Point projected on manifold
+    # Encoding size of a point projected on manifold
     PR = P*M
 
-    # Get orthogonal compliment space bounding box
-    intervals, _ = boundingbox(X.-μ, M)
+    # Project points to the orthogonal compliment space (OCS) of the manifold
+    Y = project(C, X)
 
-    # Estimate number of bins required for each competent of OSC
-    bins, sqerr, C = optquant(intervals, ɛ, tot=tot, tol=tol)
+    # Get OCS bounding box
+    rngs, _ = boundingbox(Y)
+
+    # Estimate number of bins required for each component of OSC
+    bins, sqerr, C = optquant(rngs, ɛ, tot=tot, tol=tol)
 
     # Number of bins required to encode data spread in OSC given optimal quantization
     # C = Σ_k log(N_k)
@@ -319,34 +328,29 @@ end
 =#
 
 "Calculate MDL for the manifold"
-function calculate(::Type{MT}, M::Manifold, X::Matrix{T}, Pm::Int, Pd::Int;
-                   ɛ::T = 1e-2, tot::Int = 1000, tol = 1e-8) where {MT <: MethodType, T <: Real}
+function calculate(::Type{MT}, M::Manifold{T}, X::AbstractMatrix{T}, Pm::Int, Pd::Int;
+                   ɛ::T = 1e-2, tot::Int = 1000, tol = 1e-8) where {MT<:MethodType, T<:AbstractFloat}
     return modeldl(MT, M, X, Pm) + datadl(MT, M, X, Pd, ɛ, tot, tol)
 end
 
 "Calculate MDL for the clustering"
-function calculate(::Type{MT}, Ms::Vector{Manifold}, X::Matrix{T}, Pm::Int, Pd::Int;
-             ɛ::T=1e-2, tot::Int = 1000, tol = 1e-8) where {MT <: MethodType, T <: Real}
-    return sum([calculate(MT,m,X[:,labels(m)],Pm,Pd,ɛ=ɛ,tot=tot,tol=tol) for m in Ms])
+function calculate(::Type{MT}, Ms::Vector{Manifold}, X::AbstractMatrix{T}, Pm::Int, Pd::Int;
+             ɛ::T=1e-2, tot::Int = 1000, tol = 1e-8) where {MT<:MethodType, T<:AbstractFloat}
+    return sum(calculate(MT, m, X[:,points(m)], Pm, Pd, ɛ=ɛ, tot=tot, tol=tol) for m in Ms)
 end
 
-"Set default MDL calculation by specifying related `MDL.MethodType` type as parameter `typ`"
-function type!(typ::DataType)
-    @assert typ <: MethodType "Invalid MDL method type"
-    global DefaultType = typ
-end
 end
 
 # Compatibility
-function mdl(M::Manifold, X::Matrix{T}, Pm::Int, Pd::Int;
+function mdl(M::Manifold{T}, X::AbstractMatrix{T}, Pm::Int, Pd::Int;
              dist::Symbol = :OptimalQuant, ɛ::T = 1e-2,
-             tot::Int = 1000, tol = 1e-8) where T <: Real
+             tot::Int = 1000, tol = 1e-8) where T<:AbstractFloat
     mdltype = eval(MDL, dist)
     return MDL.calculate(mdltype, M, X, Pm, Pd, ɛ=ɛ)
 end
 
-function mdl(Ms::Vector{Manifold}, X::Matrix{T}, Pm::Int, Pd::Int;
+function mdl(Ms::Vector{Manifold}, X::AbstractMatrix{T}, Pm::Int, Pd::Int;
              dist::Symbol = :OptimalQuant, ɛ::T = 1e-2,
-             tot::Int = 1000, tol = 1e-8) where T <: Real
-    return sum([mdl(m,X,Pm,Pd,dist=dist,ɛ=ɛ,tot=tot,tol=tol) for m in Ms])
+             tot::Int = 1000, tol = 1e-8) where T<:AbstractFloat
+    return sum(mdl(m,X,Pm,Pd,dist=dist,ɛ=ɛ,tot=tot,tol=tol) for m in Ms)
 end

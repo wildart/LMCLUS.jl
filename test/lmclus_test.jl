@@ -54,7 +54,7 @@ using Combinatorics
 	@testset "Label Match" for idxs in combinations(1:nclusters(res),2)
 		i = idxs[1]
 		j = idxs[2]
-		@test length(symdiff(labels(manifold(res,i)), labels(manifold(res, j)))) == cnts[i] + cnts[j]
+		@test length(symdiff(points(manifold(res,i)), points(manifold(res, j)))) == cnts[i] + cnts[j]
 	end
 
 	# Sampling
@@ -70,10 +70,11 @@ using Combinatorics
 	@test nclusters(res) >= 3
 
 	# MDL
-	LMCLUS.MDL.type!(LMCLUS.MDL.SizeIndependent)
+	p.mdl_algo = LMCLUS.MDL.SizeIndependent
 	p.mdl = true
 	res = lmclus(data, p)
 	@test nclusters(res) >= 3
+	p.mdl_algo = LMCLUS.MDL.OptimalQuant
 	p.mdl = false
 
 	# adjust cluster bases
@@ -97,6 +98,7 @@ using Combinatorics
 	# Otsu
 	p.sep_algo = LMCLUS.Otsu
 	p.min_cluster_size = 200
+	p.basis_alignment = true
 	res = lmclus(data, p)
 	@test nclusters(res) >= 3
 	p.sep_algo = LMCLUS.Kittler
@@ -105,9 +107,13 @@ using Combinatorics
 	# Iterative refinement
 	dfun = (X,m)  -> distance_to_manifold(X, mean(m), projection(m))
 	efun = (X,ms) -> LMCLUS.MDL.calculate(LMCLUS.MDL.OptimalQuant, ms, X, 32, 16)
-	res2 = refine(res, data, dfun, efun)
+	res2 = refine(res, data, dfun, efun, bounds=true)
+	@test nclusters(res) >= nclusters(res2)
+	@test threshold(manifold(res2,1))[1] > 0.0
+	@test threshold(manifold(res2,1))[2] > 0.0
+	# no changes to original clustering
 	@testset for (m1, m2) in zip(manifolds(res), manifolds(res))
-		@test all(labels(m1) .== labels(m2))
+		@test all(points(m1) .== points(m2))
 	end
 
 end

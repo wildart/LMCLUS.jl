@@ -18,21 +18,20 @@ using LMCLUS
     @test s.bins == d.bins
 
     m = Manifold(2, [2., 2.], [2. 2.; 2. 2.], [1, 2, 3], 10., 10.)
-    @test indim(m) == 2
-    @test outdim(m) == 3
-    @test labels(m) == [1, 2, 3]
+    @test outdim(m) == 2
+    @test size(m) == 3
+    @test points(m) == [1, 2, 3]
     @test mean(m) == [2., 2.]
     @test projection(m) == [2. 2.; 2. 2.]
     @test threshold(m) == (10., 10.)
-    @test assignments([m]) == ones(3)
 
     io = IOBuffer()
     serialize(io, m)
     seek(io, 0)
     n = deserialize(io)
-    @test indim(m) == indim(n)
     @test outdim(m) == outdim(n)
-    @test labels(m) == labels(n)
+    @test size(m) == size(n)
+    @test points(m) == points(n)
     @test mean(m) == mean(n)
     @test projection(m) == projection(n)
     @test threshold(m) == threshold(n)
