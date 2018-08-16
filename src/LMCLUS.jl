@@ -7,7 +7,7 @@ import Statistics: mean
 import MultivariateStats: PCA, fit, indim, outdim, projection
 import Clustering: ClusteringResult, assignments, counts, nclusters
 import Distributed: Future, remotecall, nprocs, myid
-import Random: _randjump, MersenneTwister, randperm, DSFMT
+import Random: _randjump, MersenneTwister, randperm, DSFMT, GLOBAL_RNG, AbstractRNG
 
 export  lmclus,
 
@@ -38,8 +38,8 @@ include("separation.jl")
 include("mdl.jl")
 
 const TRACE = LogLevel(Base.CoreLogging.Debug.level-1000)
-const DEBUG_SEPARATION = LogLevel(Base.CoreLogging.Debug.level-900)
-const REPORT = LogLevel(Base.CoreLogging.Info.level-900)
+const DEBUG_SAMPLING = LogLevel(Base.CoreLogging.Info.level-900)
+const DEBUG_SEPARATION = LogLevel(Base.CoreLogging.Debug.level-800)
 
 #
 # Linear Manifold Clustering
@@ -316,24 +316,24 @@ function find_separation_basis(X::AbstractMatrix{T}, lm_dim::Int,
     samples_proc = round(Int, Q / length(prngs))
 
     # enable parallel sampling
-    arr = Array{Future}(undef, length(prngs))
+    bases = Array{Future}(undef, length(prngs))
     np = nprocs()
     nodeid = myid()
     for i in 1:length(prngs)
         pid = nodeid == 1 ? (i%np)+1 : nodeid #  if running from node 1
-        arr[i] = remotecall(sample_manifold, pid, X, lm_dim+1, params, prngs[i], samples_proc)
+        bases[i] = remotecall(sample_manifold, pid, X, lm_dim+1, params, prngs[i], samples_proc)
     end
 
     # reduce values of manifolds from remote sources
     best_sep, best_origin, best_basis = Separation(), zeros(T, 0), zeros(T, 0, 0)
-    for (i, rr) in enumerate(arr)
+    for (i, rr) in enumerate(bases)
         sep, origin, basis, mt = fetch(rr)
-        if criteria(sep) > criteria(best_sep) # get largets separation
+        if criteria(sep) > criteria(best_sep) # get largest separation
             best_sep = sep
             best_origin = origin
             best_basis = basis
         end
-        prngs[i] = mt
+        prngs[i] = mt # save state of RNG
     end
 
     # bad sampling
@@ -349,10 +349,9 @@ function sample_manifold(X::Matrix{T}, lm_dim::Int,
     best_basis = zeros(0, 0)
 
     for i in 1:num_samples
-        sample = sample_points(X, lm_dim, prng)
-        if length(sample) == 0
-            continue
-        end
+        sample = sample_points(X, lm_dim, rng=prng)
+        length(sample) == 0 && continue
+
         origin, basis = form_basis(X, sample)
         sep = find_separation(X, origin, basis, params, prng)
         if criteria(sep) > criteria(best_sep)

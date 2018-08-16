@@ -5,16 +5,17 @@ import Random
 
 @testset "Utils" begin
 
-	Random.seed!(123894)
-    S = hcat(fill(1,2,2), fill(2,2,2))
-    @test LMCLUS.sample_points(S, 2) == [4, 1]
-    @test LMCLUS.sample_points(S, 3) == Int[]
-	@test_throws ErrorException LMCLUS.sample_points(S, -3)
+	# Test data sampling
+	mt = Random.MersenneTwister(0)
+	@test length(LMCLUS.randpermset(10,5,mt)) == 5
 
-    # Test data sampling
-	@test size(unique(LMCLUS.randperm2(10,5)),1) == 5
-	@test size(LMCLUS.sample_points(Matrix(I, 5, 3),3),1) == 3
-	@test_throws ErrorException size(LMCLUS.sample_points(Matrix(I, 5, 3),5),1) == 4
+    S = hcat(fill(1,2,2), fill(2,2,2))
+    @test LMCLUS.sample_points(S, 2, rng=mt) == [4, 1]
+    @test LMCLUS.sample_points(S, 3, rng=mt) == Int[]
+	@test_throws ErrorException LMCLUS.sample_points(S, -3, rng=mt)
+
+	@test length(LMCLUS.sample_points(Matrix(I, 5, 3), 3, rng=mt)) == 3
+	@test_throws ErrorException LMCLUS.sample_points(Matrix(I, 5, 3), 5, rng=mt)
 
 	# Test basis forming
 	data = float(reshape([1,1,0, 1,2,2, -1,0,2, 0,0,1],3,4))
