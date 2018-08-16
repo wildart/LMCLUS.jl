@@ -122,9 +122,9 @@ end
 # creating a basis matrix with one less vector than the number of sampled points.
 # Then perform orthogonalization through Gram-Schmidt process.
 # Note: Resulting basis is transposed.
-function form_basis(X::AbstractMatrix{T}, sample::Vector{Int}) where T<:AbstractFloat
-    origin = X[:,sample[1]]
-    basis = X[:,sample[2:end]] .- origin
+function form_basis(X::AbstractMatrix{T}, sample_indices::Vector{S}) where {T<:AbstractFloat, S<:Integer}
+    origin = X[:,sample_indices[1]]
+    basis = X[:,sample_indices[2:end]] .- origin
     vec(origin), orthogonalize(basis)
 end
 

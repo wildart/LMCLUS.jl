@@ -72,7 +72,7 @@ function lmclus(X::AbstractMatrix{T}, params::Parameters, prngs::Vector{Mersenne
     # Check if manifold maximum dimension is less then full dimension
     if N <= params.max_dim
         params.max_dim = N - 1
-        @info "Adjusting maximum manifold dimension to $(params.max_dim)"
+        @debug "Adjusting maximum manifold dimension to $(params.max_dim)"
     end
 
     # Main loop through dataset
@@ -86,7 +86,7 @@ function lmclus(X::AbstractMatrix{T}, params::Parameters, prngs::Vector{Mersenne
         push!(separations, best_separation)
 
         number_of_clusters += 1
-        @info "Found cluster" number_of_clusters size=size(best_manifold) dimension=outdim(best_manifold)
+        @debug "Found cluster" number_of_clusters size=size(best_manifold) dimension=outdim(best_manifold)
 
         # Stop clustering if found specified number of clusters
         length(manifolds) == params.stop_after_cluster && break
@@ -97,7 +97,7 @@ function lmclus(X::AbstractMatrix{T}, params::Parameters, prngs::Vector{Mersenne
 
     # Rest of the points considered as noise
     if length(index) > 0
-        @info "Outliers" number=length(index)
+        @debug "Outliers" number=length(index)
         outliers = Manifold(0, zeros(T, N), zeros(T, N, 0), index)
         params.basis_alignment && adjustbasis!(outliers, X, adjust_dim=params.dim_adjustment)
         push!(manifolds, outliers)
