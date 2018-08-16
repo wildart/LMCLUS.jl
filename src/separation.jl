@@ -7,7 +7,7 @@ function separation(::Type{T}, xs::Vector{S};
     r = range(minX, stop=maxX, length=bins+1)
     H = fit(Histogram, xs, r, closed=:left)
     N = length(H.weights)
-    @logmsg DEBUG_SEPARATION "Separation Histogram" H
+    @logmsg DEBUG_SEPARATION "Separation histogram" H
 
     return try
         thresh = fit(T, H, length(xs)-1)
@@ -19,7 +19,7 @@ function separation(::Type{T}, xs::Vector{S};
 
         Separation(depth(thresh), discriminability, threshold, minIdx, minX, maxX, bins)
     catch ex
-        @logmsg TRACE "Separation Error" ex
+        @logmsg TRACE "Separation error" ex
         Separation(0.0, 0.0, maxX, 0, minX, maxX, bins) # threshold is set to maximal element
     end
 end
@@ -51,7 +51,7 @@ function fit(::Type{Kittler}, H::Histogram, n::Int; tol=1.0e-5)
             J[t] = 1 + 2*(S[t,1]*log(sqrt(S[t,5])) + S[t,2]*log(sqrt(S[t,6]))) - 2*(S[t,1]*log(S[t,1]) + S[t,2]*log(S[t,2]))
         end
     end
-    @logmsg DEBUG_SEPARATION "Kittler Criterion Function" J
+    @logmsg DEBUG_SEPARATION "Kittler criterion function" J
 
     # Global minimum parameters
     depth, global_min = find_global_min(J, tol)
@@ -65,9 +65,9 @@ struct Otsu <: Thresholding
     depth::Float64
     minindex::Int
 end
-depth(t::LMCLUS.Otsu) = t.depth
-stats(t::LMCLUS.Otsu) = t.statistics
-Base.minimum(t::LMCLUS.Otsu) = t.minindex
+depth(t::Otsu) = t.depth
+stats(t::Otsu) = t.statistics
+Base.minimum(t::Otsu) = t.minindex
 
 """Performs Otsu thresholding algorithm
 
@@ -86,7 +86,7 @@ function fit(::Type{Otsu}, H::Histogram, n::Int; tol=1.0e-5)
         varw = S[t,1]*S[t,5] - S[t,2]*S[t,6]
         J[t] = varb/varw
     end
-    @logmsg DEBUG_SEPARATION "Otsu Criterion Function" J
+    @logmsg DEBUG_SEPARATION "Otsu criterion function" J
 
     # Global minimum parameters
     depth, global_min = find_global_min(J, tol)

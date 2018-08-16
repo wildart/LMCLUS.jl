@@ -90,7 +90,7 @@ function refine(res::LMCLUSResult, data::AbstractMatrix,
         Δ = Δ⁺
     end
 
-    return LMCLUSResult(M, LMCLUS.Separation[])
+    return LMCLUSResult(M, Separation[])
 end
 
 """Reassign outliers to the closes cluster in the clustering."""
@@ -121,5 +121,5 @@ function clearoutliers(res::LMCLUSResult, data::AbstractMatrix,
         m.σ = 0.0
     end
 
-    return LMCLUSResult(M, LMCLUS.Separation[])
+    return LMCLUSResult(M, Separation[])
 end
