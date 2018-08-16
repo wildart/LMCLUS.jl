@@ -1,11 +1,14 @@
-using Base.Test
 using LMCLUS
 using Combinatorics
+using Test
+using Statistics
+using DelimitedFiles
+import Random
 
 @testset "Clustering" begin
 
 	# Test histogram size calculations
-	srand(24975754857)
+	Random.seed!(24975754857)
 	x = rand(1000)
 	@test LMCLUS.gethistogrambins(x, 0.0, 10, 5) == 10
 	@test LMCLUS.gethistogrambins(x, 0.0, 10, 15) == 15
@@ -40,7 +43,7 @@ using Combinatorics
 	# test separation calculations
 	M = [297.654, -183.908, -164.718, -339.345, -53.5994, -142.06, -207.939, -180.871, 469.81, 190.212]
 	B = [0.0114666 0.20954 -0.371882 0.0527596 0.429496 -0.0887774 0.0872738 0.734395 0.121809 -0.246463]'
-	s = LMCLUS.find_separation(data, M, B, p)
+	s = LMCLUS.find_separation(data, M, B, p, Random.GLOBAL_RNG)
 	@test typeof(s) == LMCLUS.Separation
 	@test criteria(s) ≈ 7.285358462818518
 	@test threshold(s) ≈ 876.2634381305518

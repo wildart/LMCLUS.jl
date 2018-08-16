@@ -1,19 +1,16 @@
-using StatsBase
-
 """Perform the dataset `xs` separation by thresholding a dataset `bins`ed histogram based on the algorith `T`"""
 function separation(::Type{T}, xs::Vector{S};
-                    bins = 20, tol = 1.0e-5,
-                    debug = false) where {T <: Thresholding, S <: Real}
+                    bins = 20, tol = 1.0e-5) where {T <: Thresholding, S <: Real}
     minX, maxX = extrema(xs)
 
     # get histogram
-    r = linspace(minX, maxX, bins+1)
+    r = range(minX, stop=maxX, length=bins+1)
     H = fit(Histogram, xs, r, closed=:left)
     N = length(H.weights)
-    debug && println("H: $(H.weights)")
+    @logmsg DEBUG_SEPARATION "Separation Histogram" H
 
     return try
-        thresh = fit(T, H.weights, length(xs)-1, debug = debug)
+        thresh = fit(T, H, length(xs)-1)
 
         minIdx = minimum(thresh)
         s = stats(thresh)
@@ -22,7 +19,7 @@ function separation(::Type{T}, xs::Vector{S};
 
         Separation(depth(thresh), discriminability, threshold, minIdx, minX, maxX, bins)
     catch ex
-        LOG(5, ex.msg)
+        @logmsg TRACE "Separation Error" ex
         Separation(0.0, 0.0, maxX, 0, minX, maxX, bins) # threshold is set to maximal element
     end
 end
@@ -41,11 +38,11 @@ Base.minimum(t::Kittler) = t.minindex
 
 J. Kittler & J. Illingworth: "Minimum Error Thresholding", Pattern Recognition, Vol 19, nr 1. 1986, pp. 41-47.
 """
-function fit(::Type{Kittler}, H::Vector{Int}, n::Int; tol=1.0e-5, debug=false)
-    N = length(H)
+function fit(::Type{Kittler}, H::Histogram, n::Int; tol=1.0e-5)
+    N = length(H.weights)
 
     # calculate stats
-    S = histstats(H, n)
+    S = histstats(H.weights, n)
 
     # Compute criterion function
     J = fill(-Inf, N-1)
@@ -54,7 +51,7 @@ function fit(::Type{Kittler}, H::Vector{Int}, n::Int; tol=1.0e-5, debug=false)
             J[t] = 1 + 2*(S[t,1]*log(sqrt(S[t,5])) + S[t,2]*log(sqrt(S[t,6]))) - 2*(S[t,1]*log(S[t,1]) + S[t,2]*log(S[t,2]))
         end
     end
-    debug && println("J: $J")
+    @logmsg DEBUG_SEPARATION "Kittler Criterion Function" J
 
     # Global minimum parameters
     depth, global_min = find_global_min(J, tol)
@@ -76,11 +73,11 @@ Base.minimum(t::LMCLUS.Otsu) = t.minindex
 
 N. Otsu: "A threshold selection method from gray-level histograms", Automatica, 1975, 11, 285-296.
 """
-function fit(::Type{Otsu}, H::Vector{Int}, n::Int; tol=1.0e-5, debug=false)
-    N = length(H)
+function fit(::Type{Otsu}, H::Histogram, n::Int; tol=1.0e-5)
+    N = length(H.weights)
 
     # calculate stats
-    S = histstats(H, n)
+    S = histstats(H.weights, n)
 
     # Compute criterion function
     J = zeros(N)
@@ -89,7 +86,7 @@ function fit(::Type{Otsu}, H::Vector{Int}, n::Int; tol=1.0e-5, debug=false)
         varw = S[t,1]*S[t,5] - S[t,2]*S[t,6]
         J[t] = varb/varw
     end
-    debug && println("J: $J")
+    @logmsg DEBUG_SEPARATION "Otsu Criterion Function" J
 
     # Global minimum parameters
     depth, global_min = find_global_min(J, tol)

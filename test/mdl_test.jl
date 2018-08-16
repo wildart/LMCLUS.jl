@@ -1,6 +1,9 @@
-using Base.Test
+using LinearAlgebra
 using LMCLUS
+using Statistics
 using Distributions
+using Test
+import Random
 
 @testset "MDL" begin
 
@@ -26,7 +29,7 @@ using Distributions
                         D::Symbol = :Uniform;  σs::Vector{Float64} = ones(N))
             @assert size(bounds) == (N,2) "Define bounds for every dimension"
             @assert size(B) == (N,M) "Define bounds for every dimension"
-            manifold = Manifold(M, zeros(N), B, round.(Int, linspace(1, C, C)), θ, 0.0)
+            manifold = Manifold(M, zeros(N), B, round.(Int, range(1, stop=C, length=C)), θ, 0.0)
 
             c = 1
             X = zeros(N,C)
@@ -55,7 +58,7 @@ using Distributions
         N = 2        # Space dimension
         M = 1        # Linear manifold dimension
         C = 100      # Size of a LM cluster
-        B = eye(N,M) # Basis vectors
+        B = Matrix(I,N,M) # Basis vectors
         bounds = hcat(fill(-1.,N), fill(1., N)) # LM cluster bounds
         θ = 0.8      # distance threshold
         σs = [1.0, 0.25] # diag covariances
@@ -63,10 +66,10 @@ using Distributions
         tot = 1000
         tol = 1e-8
 
-        srand(923487298)
+        Random.seed!(923487298)
         B *= rand()
 
-        srand(923487298)
+        Random.seed!(923487298)
         Xg, Mg = generate_lm(N, M, C, B, bounds, θ, :Gausian; σs = σs)
         LMCLUS.adjustbasis!(Mg, Xg)
         @test LMCLUS.hasfullbasis(Mg)
@@ -92,7 +95,7 @@ using Distributions
         @test LMCLUS.MDL.calculate(LMCLUS.MDL.SizeIndependent, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3008
 
         # Test size dependence
-        srand(923487298)
+        Random.seed!(923487298)
         Xg, Mg = generate_lm(N, M, 10*C, B, bounds, θ, :Gausian; σs = σs)
         LMCLUS.adjustbasis!(Mg, Xg)
         @test LMCLUS.hasfullbasis(Mg)

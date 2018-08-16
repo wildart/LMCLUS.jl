@@ -1,5 +1,7 @@
 module MDL
 
+using LinearAlgebra
+import Statistics: mean
 import StatsBase: fit, Histogram
 import ..LMCLUS: Manifold, indim, outdim, projection, threshold, points, hasfullbasis, project
 
@@ -17,7 +19,7 @@ struct SizeIndependent <: MethodType end # ICPR-2016 Eq. 8
 
 """Optimal number of bins given constant C over intervals"""
 function optbins(intervals::Vector{T}, C::T) where T<:AbstractFloat
-    ns = ceil.(intervals * exp( (C - sum(intervals))/length(intervals) ), 0 )
+    ns = ceil.(intervals * exp( (C - sum(intervals))/length(intervals) ), digits=0)
     nsi = zeros(UInt, size(ns))
     for i in 1:length(nsi)
         nsi[i] = if ns[i] >= typemax(UInt)
@@ -37,9 +39,9 @@ quanterror(intervals, N_k_opt) = sum(univar(intervals./N_k_opt))
 
 """Optimal quantization of the interval"""
 function optquant(intervals::Vector{T}, ɛ::T; tot::Int = 1000, tol = 1e-6) where T<:AbstractFloat
-    intervals[isnan.(intervals)] = eps() # remove nans
-    intervals[intervals .< eps()] = eps() # remove 0s
-    intervals[isinf.(intervals)] = 1. # remove inf
+    intervals[isnan.(intervals)]  .= eps() # remove nans
+    intervals[intervals .< eps()] .= eps() # remove 0s
+    intervals[isinf.(intervals)]  .= 1.0   # remove inf
 
     # Setup C bounds
     K = length(intervals)
@@ -92,16 +94,16 @@ function boundingbox(X, m)
     Y = BC'*X
 
     # Calculate data spread in OCS
-    Ymin = vec(minimum(Y, 2))
-    Ymax = vec(maximum(Y, 2))
+    Ymin = vec(minimum(Y, dims=2))
+    Ymax = vec(maximum(Y, dims=2))
     range = abs.(Ymax - Ymin)
 
     return range, Y, Ymin, Ymax
 end
 
 function boundingbox(Y::AbstractMatrix{T}) where T<:AbstractFloat
-    Ymin = vec(minimum(Y, 2))
-    Ymax = vec(maximum(Y, 2))
+    Ymin = vec(minimum(Y, dims=2))
+    Ymax = vec(maximum(Y, dims=2))
     Yrange = abs.(Ymax - Ymin)
     return Yrange, Ymin, Ymax
 end
@@ -112,7 +114,7 @@ end
 =#
 
 """Raw representation of the data"""
-modeldl(::Type{Raw}, M::Manifold, X::Matrix, P::Int) = P*length(X)
+modeldl(::Type{Raw}, M::Manifold, X::AbstractMatrix, P::Int) = P*length(X)
 datadl(::Type{Raw}, aggs...) = 0
 
 function raw(M::Manifold, Pm::Int)
@@ -124,7 +126,7 @@ end
     From: O. Georgieva, K. Tschumitschew, and F. Klawonn,
     “Cluster validity measures based on the minimum description length principle”
 """
-function modeldl(::Type{ZeroDim}, M::Manifold, X::Matrix, P::Int)
+function modeldl(::Type{ZeroDim}, M::Manifold, X::AbstractMatrix, P::Int)
     return P*size(X,1)
 end
 
@@ -168,7 +170,7 @@ end
 
     Encodes linear manifold & orthogonal complement space basis vectors
 """
-function modeldl(::Type{MT}, C::Manifold, X::Matrix, P::Int) where MT <: MethodType
+function modeldl(::Type{MT}, C::Manifold, X::AbstractMatrix, P::Int) where MT <: MethodType
     N = size(X,1)  # space dimension
     return if outdim(C) != 0
         (P*N*(N+1))>>1
@@ -238,7 +240,7 @@ function datadl(::Type{Gaussian}, C::Manifold{T}, X::AbstractMatrix{T},
     PR = P*M
 
     # Change points basis to of orthogonal complement subspace
-    OP = (eye(N) - B*B')*(X.-μ)
+    OP = (Matrix{T}(I, N, N) - B*B')*(X.-μ)
 
     # multivariate normal distribution entropy
     Σ = OP*OP'
@@ -280,7 +282,7 @@ function datadl(::Type{Empirical}, C::Manifold{T}, X::AbstractMatrix{T},
     # Cumulative entropy of data spread in OSC (calculated from quantization)
     E = 0.0
     for i in 1:N-M
-        Yb = linspace(Ymin[i], Ymax[i], bins[i]+1)
+        Yb = range(Ymin[i], stop=Ymax[i], length=bins[i]+1)
         H = fit(Histogram, vec(Y[i,:]), Yb, closed=:left)
         E += -sum(map(x-> x > 0. ? (x/(n-1))*log2(x/(n-1)) : 0., H.weights))
     end
@@ -345,7 +347,7 @@ end
 function mdl(M::Manifold{T}, X::AbstractMatrix{T}, Pm::Int, Pd::Int;
              dist::Symbol = :OptimalQuant, ɛ::T = 1e-2,
              tot::Int = 1000, tol = 1e-8) where T<:AbstractFloat
-    mdltype = eval(MDL, dist)
+    mdltype = Core.eval(MDL, dist)
     return MDL.calculate(mdltype, M, X, Pm, Pd, ɛ=ɛ)
 end
 

@@ -1,5 +1,7 @@
-using Base.Test
 using LMCLUS
+using Test
+using Serialization
+using Statistics
 
 @testset "LMCLUS Types" begin
 

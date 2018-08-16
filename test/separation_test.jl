@@ -1,10 +1,11 @@
 using LMCLUS
 using Distributions
-using Base.Test
+using Test
+import Random
 
 @testset "Thresholding" begin
 
-	srand(283739285)
+	Random.seed!(283739285)
 	N = 5000
 	bins = 100
 	generate_sample(N, μ1, σ1, μ2, σ2) = vcat(rand(Normal(μ1,σ1), N),rand(Normal(μ2,σ2), N))

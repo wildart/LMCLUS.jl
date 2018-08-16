@@ -1,18 +1,20 @@
 using LMCLUS
-using Base.Test
+using LinearAlgebra
+using Test
+import Random
 
 @testset "Utils" begin
 
-    srand(123894)
+	Random.seed!(123894)
     S = hcat(fill(1,2,2), fill(2,2,2))
     @test LMCLUS.sample_points(S, 2) == [4, 1]
     @test LMCLUS.sample_points(S, 3) == Int[]
-    @test_throws ErrorException LMCLUS.sample_points(S, -3)
+	@test_throws ErrorException LMCLUS.sample_points(S, -3)
 
     # Test data sampling
 	@test size(unique(LMCLUS.randperm2(10,5)),1) == 5
-	@test size(LMCLUS.sample_points(eye(5, 3),3),1) == 3
-	@test_throws ErrorException size(LMCLUS.sample_points(eye(5, 3),5),1) == 4
+	@test size(LMCLUS.sample_points(Matrix(I, 5, 3),3),1) == 3
+	@test_throws ErrorException size(LMCLUS.sample_points(Matrix(I, 5, 3),5),1) == 4
 
 	# Test basis forming
 	data = float(reshape([1,1,0, 1,2,2, -1,0,2, 0,0,1],3,4))

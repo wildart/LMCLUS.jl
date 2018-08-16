@@ -1,8 +1,9 @@
+using Distributed
 addprocs(1)
 
 import LMCLUS
 @everywhere using LMCLUS
-using Base.Test
+using Test
 
 @testset "Clustering (Parallel)" begin
     @test nprocs() == 2

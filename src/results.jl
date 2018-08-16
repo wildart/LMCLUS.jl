@@ -52,24 +52,25 @@ function refine(res::LMCLUSResult, data::AbstractMatrix,
 
         D = map(m->size(m) > 0 ? dfun(data, m) : fill(Inf, size(data,2)), M)
         DM = hcat(D...)
-        A = mapslices(d->last(findmin(d)), DM, 2)
+        A = mapslices(d->last(findmin(d)), DM, dims=2)
+        Alidx = LinearIndices(A)
 
         # update assignments
         M⁺ = Manifold[]
         for (i,m) in enumerate(M)
-            I = find(A .== i)
-            if length(I) < min_cluster_size #TODO: reassign points before modifing cluster parameters
-                for ii in I
+            Idxs = Alidx[findall(A .== i)]
+            if length(Idxs) < min_cluster_size #TODO: reassign points before modifing cluster parameters
+                for ii in Idxs
                     A[ii] = sortperm(DM[ii,:])[2]
                 end
                 continue # reassign cluster points, effectivly removing it
             end
-            if length(I) > 0
-                X = data[:, I]
+            if length(Idxs) > 0
+                X = data[:, Idxs]
                 R = fit(PCA, X; pratio=1.0)
                 μ = mean(R)
                 B = projection(R)
-                m = Manifold(outdim(m), mean(R), projection(R), I)
+                m = Manifold(outdim(m), mean(R), projection(R), Idxs)
                 if bounds
                     m.θ = maximum(distance_to_manifold(X, m))
                     m.σ = maximum(distance_to_manifold(X, m, ocss=true))
@@ -105,7 +106,7 @@ function clearoutliers(res::LMCLUSResult, data::AbstractMatrix,
     DM = hcat(D...)[OI, :]
 
     # reassing outliers to available clusters
-    A = mapslices(d->last(findmin(d)), DM, 2)
+    A = mapslices(d->last(findmin(d)), DM, dims=2)
     for (i,a) in enumerate(A)
         push!(points(M[a]), OI[i])
     end

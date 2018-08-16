@@ -67,7 +67,7 @@ function sample_points(X::AbstractMatrix{T}, n::Int) where T <: Real
     # If at this point we do not have proper sample
     # then our dataset doesn't have enough unique rows
     if length(I) < n
-        warn("Dataset doesn't have enough unique points, decrease number of sampled points")
+        @warn "Dataset doesn't have enough unique points, decrease number of sampled points"
         I = Int[]
     end
     return I
@@ -77,7 +77,7 @@ end
 function sample_points(X::AbstractMatrix{T}, k::Int, r::MersenneTwister) where T <: Real
     N, n = size(X)
     if n < k
-        warn("Not enough samples to construct manifold")
+        @warn "Not enough samples to construct manifold" maxlog=5
         return Int[]
     end
 
@@ -92,7 +92,7 @@ function sample_points(X::AbstractMatrix{T}, k::Int, r::MersenneTwister) where T
     for i in 1:(k-1)
         for j in (i+1):k
             if all([X[k,I[i]] == X[k,I[j]] for k in 1:N])
-                warn("Sample is not unique: X[:,$(I[i])] == X[:,$(I[j])]")
+                @warn "Sample is not unique: X[:,$(I[i])] == X[:,$(I[j])]"
                 return Int[]
             end
         end
@@ -162,13 +162,6 @@ function adjustbasis!(M::Manifold, X::AbstractMatrix;
     M.μ = mean(R)
     M.basis = projection(R)
     return M
-end
-
-function log_separation(sep::Separation, params::Parameters)
-    LOG(4, "separation: width=", sep.discriminability, "  depth=", sep.depth)
-    LOG(4, "  criteria: $(criteria(sep)) (best bound=$(params.best_bound))")
-    LOG(4, " threshold: $(threshold(sep)) in [$(sep.mindist), $(sep.maxdist)]")
-    LOG(4, " globalmin: $(sep.globalmin), total bins: $(sep.bins)")
 end
 
 function origstats(H::Vector{T}) where T<:Real
@@ -340,7 +333,7 @@ function project(MC::Manifold{T}, X::AbstractMatrix{T}; ocs = true) where T<:Rea
     # change basis for data
     r = ocs ? ((M+1):N) : (1:M)
     BC = MC.basis[:,r]
-    Y = BC'*(X.-mean(MC))
+    Y = transpose(BC) * (X.-mean(MC))
 
     return Y
 end

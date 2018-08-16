@@ -66,7 +66,7 @@ threshold(M::Manifold) = (M.θ, M.σ)
 "Returns the matrix with columns corresponding to orthonormal vectors that span the linear manifold."
 projection(M::Manifold) = M.basis[:,1:M.d]
 "Returns the translation vector `μ` which contains coordinates of the linear manifold origin."
-Base.mean(M::Manifold) = M.μ
+mean(M::Manifold) = M.μ
 "Returns the cluster size - a number of points assosiated with the cluster."
 Base.size(M::Manifold) = length(points(M))
 """Checks if the manifold `M` contains a full basis."""

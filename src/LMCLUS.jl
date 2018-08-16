@@ -1,7 +1,13 @@
 module LMCLUS
 
+using LinearAlgebra
+using Logging
+import StatsBase: fit, Histogram, sturges
+import Statistics: mean
 import MultivariateStats: PCA, fit, indim, outdim, projection
 import Clustering: ClusteringResult, assignments, counts, nclusters
+import Distributed: Future, remotecall, nprocs, myid
+import Random: _randjump, MersenneTwister, randperm, DSFMT
 
 export  lmclus,
 
@@ -25,29 +31,30 @@ export  lmclus,
         refine
 
 include("types.jl")
-include("logger.jl")
 include("params.jl")
 include("results.jl")
 include("utils.jl")
 include("separation.jl")
 include("mdl.jl")
 
-global DEBUG = false
-function debug!()
-    global DEBUG
-    DEBUG = !DEBUG
-end
+const TRACE = LogLevel(Base.CoreLogging.Debug.level-1000)
+const DEBUG_SEPARATION = LogLevel(Base.CoreLogging.Debug.level-900)
+const REPORT = LogLevel(Base.CoreLogging.Info.level-900)
 
 #
 # Linear Manifold Clustering
 #
-function lmclus(X::Matrix{T}, params::Parameters, np::Int=nprocs()) where {T<:Real}
+function lmclus(X::AbstractMatrix{T}, params::Parameters, np::Int=nprocs()) where T<:Real
     # Setup RNG
     seed = getseed(params)
     mts = if np == 1
         [MersenneTwister(seed)]
     else
-        randjump(MersenneTwister(seed), np)
+        #randjump(MersenneTwister(seed), np)
+        mt = MersenneTwister(seed)
+        jumps = fill(2^30, np-1)
+        rngs = accumulate((mt, j)->_randjump(mt, DSFMT.calc_jump(j)), jumps, init=mt)
+        pushfirst!(rngs, mt)
     end
     return LMCLUSResult(lmclus(X, params, mts)...)
 end
@@ -65,7 +72,7 @@ function lmclus(X::AbstractMatrix{T}, params::Parameters, prngs::Vector{Mersenne
     # Check if manifold maximum dimension is less then full dimension
     if N <= params.max_dim
         params.max_dim = N - 1
-        LOG(1, "Adjusting maximum manifold dimension to $(params.max_dim)")
+        @info "Adjusting maximum manifold dimension to $(params.max_dim)"
     end
 
     # Main loop through dataset
@@ -79,8 +86,7 @@ function lmclus(X::AbstractMatrix{T}, params::Parameters, prngs::Vector{Mersenne
         push!(separations, best_separation)
 
         number_of_clusters += 1
-        LOG(2, @sprintf("found cluster #%d, size=%d, dim=%d",
-            number_of_clusters, length(points(best_manifold)), outdim(best_manifold)))
+        @info "Found cluster" number_of_clusters size=size(best_manifold) dimension=outdim(best_manifold)
 
         # Stop clustering if found specified number of clusters
         length(manifolds) == params.stop_after_cluster && break
@@ -91,7 +97,7 @@ function lmclus(X::AbstractMatrix{T}, params::Parameters, prngs::Vector{Mersenne
 
     # Rest of the points considered as noise
     if length(index) > 0
-        LOG(2, "outliers: $(length(index)), 0D cluster formed")
+        @info "Outliers" number=length(index)
         outliers = Manifold(0, zeros(T, N), zeros(T, N, 0), index)
         params.basis_alignment && adjustbasis!(outliers, X, adjust_dim=params.dim_adjustment)
         push!(manifolds, outliers)
@@ -102,7 +108,7 @@ function lmclus(X::AbstractMatrix{T}, params::Parameters, prngs::Vector{Mersenne
 end
 
 # Find manifold in multiple dimensions
-# The algorith contains following state machine:
+# The algorithm contains following state machine:
 # 0. Set inspected subspace dimension to 1.
 # 1. Find linear subspace (translation & basis) with best possible separation
 # 2. Evaluate the separation criteria
@@ -117,7 +123,7 @@ end
 # 5. If the number of points in the cluster is less then manimal acceptable size
 #    then go to 9.
 # 6. If the option is set and the separation was found then
-#    performe MDL evaluation of the former cluster.
+#    perform MDL evaluation of the former cluster.
 # 6.1. If compression ration is not met, return cluster points to the dataset
 #      then go to 8.
 # 7. Return the formed cluster.
@@ -145,28 +151,41 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
 
         # search appropriate linear manifold subspace for best distance separation
         while true
-            LOG(5, "state: $state, $best_manifold")
+            @logmsg TRACE "Algorithm State" state best_manifold
             if state == :SEPARATION
                 # get separation manifold
-                LOG(2, "manifold: find suitable subspace...")
+                @debug("manifold: find suitable subspace...",
+                    data_size=length(selected),
+                    linear_manifold_dimension=sep_dim,
+                    space_dim=N
+                )
                 sep, origin, basis = find_separation_basis(X[:, selected], sep_dim, params, prngs, found)
             elseif state == :ALIGNMENT && params.basis_alignment && size(best_manifold) > 0
                 # check if the adjusted basis provides better separation
-                LOG(2, "manifold: perform basis adjustment...")
+                @debug "manifold: perform basis adjustment..."
                 adjustbasis!(best_manifold, X, adjust_dim=params.dim_adjustment)
                 origin, basis = mean(best_manifold), projection(best_manifold)
                 idxs = points(best_manifold)
-                sep = find_separation(view(X, :, idxs), origin, basis, params)
+                sep = find_separation(view(X, :, idxs), origin, basis, params, prngs[1])
             elseif state == :BOUND && params.bounded_cluster && size(best_manifold) > 0
                 # check if the bounded cluster provides better separation
-                LOG(2, "manifold: separating within manifold subspace...")
+                @debug "manifold: separating within manifold subspace..."
                 origin, basis = mean(best_manifold), projection(best_manifold)
                 idxs = points(best_manifold)
-                sep = find_separation(view(X, :, idxs), origin, basis, params, ocss = true)
+                sep = find_separation(view(X, :, idxs), origin, basis, params, prngs[1], ocss = true)
             else
                 break
             end
-            log_separation(sep, params)
+            @debug("Separation",
+                width=sep.discriminability,
+                depth=sep.depth,
+                threshold=threshold(sep),
+                extrema=extrema(sep),
+                global_minimum=sep.globalmin,
+                total_bins=sep.bins,
+                criteria=criteria(sep),
+                best_bound=params.best_bound
+            )
 
             # No good separation found
             if criteria(sep) < params.best_bound
@@ -196,7 +215,7 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
 
                 # small amount of points is considered noise, try to bump dimension
                 if length(separated) <= params.min_cluster_size
-                    LOG(3, "separated points cannot form cluster. Its size is too small ($(length(separated))).")
+                    @debug "Separated points cannot form cluster. Its size is too small ($(length(separated)))."
                     state = :FINISHED
                 else
                     # create manifold cluster from good separation found
@@ -208,7 +227,7 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
 
                     # refine dataset
                     selected = separated
-                    LOG(3, "separated points: ", length(selected))
+                    @debug "Separated points" size=length(selected)
                     state = :SEPARATION
                     separations += 1
                 end
@@ -216,11 +235,11 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
         end
 
         if length(selected) <= params.min_cluster_size # no more points left - finish clustering
-            LOG(3, "noise: dataset size < ", params.min_cluster_size," points")
+            @debug "Noise" minimum_cluster_size=params.min_cluster_size current_cluster_size=length(selected)
             break
         end
 
-        LOG(3, "no separation, ", sep_dim == params.max_dim ? "forming cluster..." : "increasing dimension...")
+        @debug "Separation not found" action=(sep_dim == params.max_dim ? "forming cluster" : "increasing dimension")
 
         # check compression ratio
         if params.mdl && outdim(best_manifold) > 0 && separations > 0
@@ -233,10 +252,15 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
             mraw = MDL.calculate(MDL.Raw, BM, BMdata, Pm, Pd)
 
             cratio = mraw/mmdl
-            LOG(4, "MDL: $mmdl, RAW: $mraw, COMPRESS: $cratio")
+            @debug("Minimal Description Length",
+                mdl_value=mmdl,
+                raw_value=mraw,
+                compression=cratio,
+                compression_threshold=params.mdl_compres_ratio,
+                action=(cratio < params.mdl_compres_ratio ? :reject : :accept)
+            )
             if cratio < params.mdl_compres_ratio
-                LOG(3, "MDL: low compression ration $cratio, required $(params.mdl_compres_ratio). Reject manifold... ")
-                LOG(4, "$(length(selected))  $(length(filtered))  $(length(points(best_manifold)))")
+                #LOG(4, "$(length(selected))  $(length(filtered))  $(length(points(best_manifold)))")
 
                 # reset dataset to original state
                 append!(selected, filtered)
@@ -254,7 +278,7 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
         if size(best_manifold) == 0
             best_manifold.points = selected
         end
-        LOG(3, "forming a cluster from the rest of $(size(best_manifold)) points")
+        @debug "Forming a cluster from the rest of $(size(best_manifold)) points"
 
         # calculate basis from the left points
         best_manifold.d = 1
@@ -279,16 +303,11 @@ end
 # 2- create distance histograms of the data points to each trial linear manifold
 # 3- of all the linear manifolds sampled select the one whose associated distance histogram
 #    shows the best separation between to modes.
-function find_separation_basis(X::Matrix{T}, lm_dim::Int,
+function find_separation_basis(X::AbstractMatrix{T}, lm_dim::Int,
                                params::Parameters,
                                prngs::Vector{MersenneTwister},
                                found::Int=0) where {T<:Real}
     full_space_dim, data_size = size(X)
-
-    LOG(3, "---------------------------------------------------------------------------------")
-    LOG(3, "data size=", data_size,"   linear manifold dim=",
-            lm_dim,"   space dim=", full_space_dim,"   searching for separation")
-    LOG(3, "---------------------------------------------------------------------------------")
 
     # determine number of samples of lm_dim+1 points
     Q = sample_quantity( lm_dim, full_space_dim, data_size, params, found)
@@ -297,7 +316,7 @@ function find_separation_basis(X::Matrix{T}, lm_dim::Int,
     samples_proc = round(Int, Q / length(prngs))
 
     # enable parallel sampling
-    arr = Array{Future}(length(prngs))
+    arr = Array{Future}(undef, length(prngs))
     np = nprocs()
     nodeid = myid()
     for i in 1:length(prngs)
@@ -318,9 +337,7 @@ function find_separation_basis(X::Matrix{T}, lm_dim::Int,
     end
 
     # bad sampling
-    if criteria(best_sep) <= 0.
-        LOG(4, "no good histograms to separate data !!!")
-    end
+    criteria(best_sep) <= 0. &&  @logmsg DEBUG_SEPARATION "no good histograms to separate data !!!"
     return best_sep, best_origin, best_basis
 end
 
@@ -337,7 +354,7 @@ function sample_manifold(X::Matrix{T}, lm_dim::Int,
             continue
         end
         origin, basis = form_basis(X, sample)
-        sep = find_separation(X, origin, basis, params)
+        sep = find_separation(X, origin, basis, params, prng)
         if criteria(sep) > criteria(best_sep)
             best_sep = sep
             best_origin = origin
@@ -355,7 +372,8 @@ Given a dataset `X`, an tanslation vector `origin` and set of basis vectors `bas
 `ocss` parameter enables separation for the orthogonal complement subspace of the linera manifold
 """
 function find_separation(X::AbstractMatrix, origin::AbstractVector,
-                         basis::AbstractMatrix, params::Parameters;
+                         basis::AbstractMatrix, params::Parameters,
+                         prng::MersenneTwister;
                          ocss::Bool = false)
     # Define sample for distance calculation
     if params.histogram_sampling
@@ -371,7 +389,7 @@ function find_separation(X::AbstractMatrix, origin::AbstractVector,
         n4= round(Int, n3)
         n= ( size(X, 2) <= n4 ? size(X, 2)-1 : n4 )
 
-        LOG(4, "sample distances for histogram: $n samples")
+        @logmsg TRACE "sample distances for histogram" samples=n
         sampleIndex = sample_points(X, n)
     end
 
@@ -381,7 +399,7 @@ function find_separation(X::AbstractMatrix, origin::AbstractVector,
     # define histogram size
     bins = gethistogrambins(distances, params.max_bin_portion, params.hist_bin_size, params.min_bin_num)
     # perform separation
-    return separation(params.sep_algo, distances, bins=bins, debug=DEBUG)
+    return separation(params.sep_algo, distances, bins=bins)
 end
 
 # Determine the number of times to sample the data in order to guaranty
@@ -402,8 +420,6 @@ function sample_quantity(k::Int, full_space_dim::Int, data_size::Int,
     N = abs(log10(params.error_bound)/log10(1-P))
     num_samples = 0
 
-    LOG(4, "number of samples by first heuristic=", N, ", by second heuristic=", data_size*params.sampling_factor)
-
     if params.sampling_heuristic == 1
         num_samples = isinf(N) ? typemax(Int) : round(Int, N)
     elseif params.sampling_heuristic == 2
@@ -415,9 +431,9 @@ function sample_quantity(k::Int, full_space_dim::Int, data_size::Int,
     end
     num_samples = num_samples > 1 ? num_samples : 1
 
-    LOG(3, "number of samples=", num_samples)
+    @debug "number of samples" first_heuristic=N second_heuristic=data_size*params.sampling_factor
 
-    num_samples
+    return num_samples
 end
 
 """Calculate histogram size
@@ -447,11 +463,7 @@ function gethistogrambins(x::Vector, max_bin_portion::Float64, hist_bin_size::In
             xmin = x[i]
         end
         bns = round(Int, xrng/binwidth)
-
-        # deal with special cases
-        if bns > l
-            bns = ceil(Int, log2(l))+1 # Sturges' formula
-        end
+        bns = bns > l ? sturges(l) : bns # deal with special cases
     end
     return max(min_bin_num, bns) # special cases: use max bin size
 end
@@ -460,8 +472,8 @@ end
 
 `ocss` parameter turns on the distance calculatation to orthogonal complement subspace of the given manifold.
 """
-function distance_to_manifold(X::AbstractMatrix{T}, origin::Vector{T}, basis::Matrix{T};
-                              ocss::Bool = false) where {T<:Real}
+function distance_to_manifold(X::AbstractMatrix{T}, origin::AbstractVector{T}, basis::AbstractMatrix{T};
+                              ocss::Bool = false) where T<:Real
     N, n = size(X)
     M = size(basis,2)
     # vector to hold distances of points from basis
@@ -475,7 +487,7 @@ function distance_to_manifold(X::AbstractMatrix{T}, origin::Vector{T}, basis::Ma
             end
         end
     end
-    proj = At_mul_B(basis,tran)
+    proj = transpose(basis) * tran
     @fastmath @inbounds for i in 1:n
         b = 0.0
         @simd for j in 1:M
@@ -489,9 +501,9 @@ distance_to_manifold(X::AbstractMatrix{<:Real}, M::Manifold; ocss::Bool = false)
     distance_to_manifold(X, mean(M), projection(M), ocss=ocss)
 
 """Calculate the distance from the `point` to the manifold, described by a `basis` matrix, and its orthoganal complement."""
-function distance_to_manifold(point::AbstractVector, basis::AbstractMatrix)
+function distance_to_manifold(point::AbstractVector{T}, basis::AbstractMatrix{T}) where T<:Real
     dpnt = sum(abs2, point)
-    dprj = sum(abs2, At_mul_B(basis,  point))
+    dprj = sum(abs2, transpose(basis) * point)
     return sqrt(abs(dpnt-dprj)), sqrt(dprj)
 end
 distance_to_manifold(point::AbstractVector, origin::AbstractVector, basis::AbstractMatrix) = distance_to_manifold(point - origin, basis)
