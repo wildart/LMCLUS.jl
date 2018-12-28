@@ -14,7 +14,7 @@ function assignments(R::LMCLUSResult)
     Ms = manifolds(R)
     A = zeros(Int, sum(map(m->size(m), Ms)))
     for (i,m) in enumerate(Ms)
-        A[points(m)] = i
+        A[points(m)] .= i
     end
     return A
 end
