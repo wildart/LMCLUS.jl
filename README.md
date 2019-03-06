@@ -14,9 +14,16 @@ Prior to Julia v0.7.0
 Pkg.clone("https://github.com/wildart/LMCLUS.jl.git")
 ```
 
-for Julia v0.7.0/1.0.0
+For Julia v0.7.0/1.0.0
 ```
 pkg> add https://github.com/wildart/LMCLUS.jl.git#0.4.0
+```
+
+For Julia 1.1+, add [BoffinStuff](https://github.com/wildart/BoffinStuff.git) registry in package manager, and proceed installation:
+
+```
+pkg> registry add https://github.com/wildart/BoffinStuff.git
+pkg> add LMCLUS
 ```
 
 ### Julia Compatibility
