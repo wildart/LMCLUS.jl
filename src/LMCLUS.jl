@@ -38,7 +38,7 @@ include("separation.jl")
 include("mdl.jl")
 
 const TRACE = LogLevel(Base.CoreLogging.Debug.level-1000)
-const DEBUG_SAMPLING = LogLevel(Base.CoreLogging.Info.level-900)
+const DEBUG_SAMPLING = LogLevel(Base.CoreLogging.Debug.level-900)
 const DEBUG_SEPARATION = LogLevel(Base.CoreLogging.Debug.level-800)
 
 #
