@@ -78,7 +78,7 @@ import Random
         @test LMCLUS.MDL.calculate(LMCLUS.MDL.ZeroDim, Mg, Xg, Pm, Pd) == 221
 
         @test LMCLUS.MDL.calculate(LMCLUS.MDL.Uniform, Mg, Xg, Pm, Pd)  == 5623
-        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Gaussian, Mg, Xg, Pm, Pd) == 1739
+        @test LMCLUS.MDL.calculate(LMCLUS.MDL.Gaussian, Mg, Xg, Pm, Pd) == 3534
 
         # Empirical entropy from optimal quantization
         @test LMCLUS.MDL.calculate(LMCLUS.MDL.Empirical, Mg, Xg, Pm, Pd, ɛ = 1e-2) == 3889

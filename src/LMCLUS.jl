@@ -99,7 +99,9 @@ function lmclus(X::AbstractMatrix{T}, params::Parameters, prngs::Vector{Mersenne
     if length(index) > 0
         @debug "Outliers" number=length(index)
         outliers = Manifold(0, zeros(T, N), zeros(T, N, 0), index)
-        params.basis_alignment && adjustbasis!(outliers, X, adjust_dim=params.dim_adjustment)
+        if params.basis_alignment
+            adjustbasis!(outliers, X, adjust_dim=params.dim_adjustment, adjust_dim_ratio=params.dim_adjustment_ratio)
+        end
         push!(manifolds, outliers)
         push!(separations, Separation())
     end
@@ -151,7 +153,8 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
 
         # search appropriate linear manifold subspace for best distance separation
         while true
-            @logmsg TRACE "Algorithm State" state best_manifold
+            # @logmsg TRACE "Algorithm State" state best_manifold
+            @debug "Algorithm State" state best_manifold
             if state == :SEPARATION
                 # get separation manifold
                 @debug("manifold: find suitable subspace...",
@@ -162,8 +165,9 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
                 sep, origin, basis = find_separation_basis(X[:, selected], sep_dim, params, prngs, found)
             elseif state == :ALIGNMENT && params.basis_alignment && size(best_manifold) > 0
                 # check if the adjusted basis provides better separation
-                @debug "manifold: perform basis adjustment..."
-                adjustbasis!(best_manifold, X, adjust_dim=params.dim_adjustment)
+                previous_outdim = outdim(best_manifold)
+                adjustbasis!(best_manifold, X, adjust_dim=params.dim_adjustment, adjust_dim_ratio=params.dim_adjustment_ratio)
+                @debug "manifold: perform basis adjustment..." outdim=outdim(best_manifold) previous_outdim
                 origin, basis = mean(best_manifold), projection(best_manifold)
                 idxs = points(best_manifold)
                 sep = find_separation(view(X, :, idxs), origin, basis, params, prngs[1])
@@ -247,7 +251,7 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
             BMdata = X[:, selected]
             Pm = params.mdl_model_precision
             Pd = params.mdl_data_precision
-            adjustbasis!(BM, X) # needed to calculate MDL
+            adjustbasis!(BM, X) # generate full basis - needed to calculate MDL
             mmdl = MDL.calculate(params.mdl_algo, BM, BMdata, Pm, Pd, ɛ = params.mdl_quant_error)
             mraw = MDL.calculate(MDL.Raw, BM, BMdata, Pm, Pd)
 
@@ -260,8 +264,6 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
                 action=(cratio < params.mdl_compres_ratio ? :reject : :accept)
             )
             if cratio < params.mdl_compres_ratio
-                #LOG(4, "$(length(selected))  $(length(filtered))  $(length(points(best_manifold)))")
-
                 # reset dataset to original state
                 append!(selected, filtered)
                 filtered = Int[]
@@ -274,15 +276,13 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
     end
 
     # Cannot find any manifold in data then form last cluster
+    require_alignment = false
     if outdim(best_manifold) == N
         if size(best_manifold) == 0
             best_manifold.points = selected
         end
         @debug "Forming a cluster from the rest of $(size(best_manifold)) points"
-
-        # calculate basis from the left points
         best_manifold.d = 1
-        adjustbasis!(best_manifold, X, adjust_dim=params.dim_adjustment)
 
         # calculate bounds
         best_manifold.θ = maximum(distance_to_manifold(view(X, :,selected), best_manifold))
@@ -291,9 +291,13 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
         else
             Inf
         end
+        require_alignment = true
     end
 
-    params.basis_alignment && adjustbasis!(best_manifold, X, adjust_dim=params.dim_adjustment)
+    # Adjust cluster basis & dimension if it is the last clusters or a corresponding setting is set
+    if params.basis_alignment || require_alignment
+        adjustbasis!(best_manifold, X, adjust_dim=params.dim_adjustment, adjust_dim_ratio=params.dim_adjustment_ratio)
+    end
 
     best_manifold, best_separation, filtered
 end
