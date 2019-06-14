@@ -19,7 +19,7 @@ For Julia v0.7.0/1.0.0
 pkg> add https://github.com/wildart/LMCLUS.jl.git#0.4.0
 ```
 
-For Julia 1.1+, add [BoffinStuff](https://github.com/wildart/BoffinStuff.git) registry in package manager, and proceed installation:
+For Julia 1.1+, add [BoffinStuff](https://github.com/wildart/BoffinStuff.git) registry in the package manager before installing the package.
 
 ```
 pkg> registry add https://github.com/wildart/BoffinStuff.git
@@ -33,7 +33,8 @@ pkg> add LMCLUS
 |v0.4.*|v0.1.2|
 |v0.5.*|v0.2.0|
 |v0.6.*|v0.3.0|
-|≥v0.7.*|≥v0.4.0|
+|≥v0.7.*|v0.4.0|
+|≥v1.1.*|≥v0.4.1|
 
 
 ## Resources
