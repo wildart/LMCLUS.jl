@@ -49,7 +49,8 @@ mutable struct Manifold{T<:AbstractFloat}
 end
 Manifold(d::Int, μ::Vector{T}, basis::Matrix{T}, pnts::Vector{Int}) where T<:AbstractFloat =
     Manifold(d, μ, basis, pnts, zero(T), zero(T))
-Manifold{T}(d::Int) where T<:AbstractFloat = Manifold(d, zeros(T,d), zeros(T,d,d), Int[])
+Manifold{T}(d::Int, pnts::Vector{Int}) where T<:AbstractFloat = Manifold(d, zeros(T,d), zeros(T,d,d), pnts)
+Manifold{T}(d::Int) where T<:AbstractFloat = Manifold(d, Int[])
 Manifold() = Manifold{Float64}(0)
 
 Base.copy(M::Manifold) = Manifold(outdim(M),mean(M),projection(M),points(M),threshold(M)...)
