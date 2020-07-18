@@ -133,14 +133,14 @@ end
 # 8.1. If the subspace dimension equals to N-1, go to 9.
 # 8.2. Otherwise, go to 1.
 # 9. Form cluster from the rest of the dataset points.
-function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
+function find_manifold(X::AbstractMatrix{T}, index::Vector{Int},
                        params::Parameters,
                        prngs::Vector{MersenneTwister},
                        found::Int=0) where T<:AbstractFloat
     filtered = Int[]
     selected = copy(index)
     N = size(X,1) # full space dimension
-    best_manifold = Manifold{T}(N)
+    best_manifold = Manifold{T}(params.max_dim, index)
     best_separation = Separation()
 
     sep_dim = params.min_dim
@@ -153,7 +153,6 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
 
         # search appropriate linear manifold subspace for best distance separation
         while true
-            # @logmsg TRACE "Algorithm State" state best_manifold
             @debug "Algorithm State" state best_manifold
             if state == :SEPARATION
                 # get separation manifold
@@ -208,7 +207,6 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
                 state = (state == :SEPARATION) ? :ALIGNMENT :
                         (state == :ALIGNMENT) ?  :BOUND     :
                         (state == :BOUND) ?      :FINISHED  : :NONE
-
             else
                 thr = threshold(sep)
                 θ, σ  = state == :BOUND ? (θ, thr) : (thr, σ)
@@ -236,6 +234,12 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
                     separations += 1
                 end
             end
+            @debug("Best manifold",
+                dim=outdim(best_manifold),
+                origin=mean(best_manifold),
+                basis=projection(best_manifold),
+                threshold=threshold(best_manifold),
+            )
         end
 
         if length(selected) <= params.min_cluster_size # no more points left - finish clustering
@@ -272,6 +276,7 @@ function find_manifold(X::AbstractMatrix{T}, index::Array{Int,1},
         end
 
         sep_dim += 1
+        @debug "Increasing search dimension" dim=sep_dim
         !params.force_max_dim && separations > 0 && break
     end
 
@@ -341,7 +346,7 @@ function find_separation_basis(X::AbstractMatrix{T}, lm_dim::Int,
     end
 
     # bad sampling
-    criteria(best_sep) <= 0. &&  @logmsg DEBUG_SEPARATION "no good histograms to separate data !!!"
+    criteria(best_sep) <= 0. &&  @debug "no good histograms to separate data !!!"
     return best_sep, best_origin, best_basis
 end
 
@@ -362,6 +367,7 @@ function sample_manifold(X::Matrix{T}, lm_dim::Int,
             best_sep = sep
             best_origin = origin
             best_basis = basis
+            @logmsg TRACE "Found new separation" separation=best_sep origin=best_origin basis=best_basis
         end
     end
 
@@ -393,7 +399,7 @@ function find_separation(X::AbstractMatrix, origin::AbstractVector,
         n= ( size(X, 2) <= n4 ? size(X, 2)-1 : n4 )
 
         @logmsg TRACE "sample distances for histogram" samples=n
-        sampleIndex = sample_points(X, n)
+        sampleIndex = sample_points(X, n, rng=prng)
     end
 
     # calculate distances to the manifold

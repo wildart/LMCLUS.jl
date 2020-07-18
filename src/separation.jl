@@ -10,7 +10,7 @@ function separation(::Type{T}, xs::Vector{S};
     @logmsg DEBUG_SEPARATION "Separation histogram" H
 
     return try
-        thresh = fit(T, H, length(xs)-1)
+        thresh = fit(T, H; tol=tol)
 
         minIdx = minimum(thresh)
         s = stats(thresh)
@@ -38,11 +38,11 @@ Base.minimum(t::Kittler) = t.minindex
 
 J. Kittler & J. Illingworth: "Minimum Error Thresholding", Pattern Recognition, Vol 19, nr 1. 1986, pp. 41-47.
 """
-function fit(::Type{Kittler}, H::Histogram, n::Int; tol=1.0e-5)
+function fit(::Type{Kittler}, H::Histogram; tol=1.0e-5)
     N = length(H.weights)
 
     # calculate stats
-    S = histstats(H.weights, n)
+    S = histstats(H.weights)
 
     # Compute criterion function
     J = fill(-Inf, N-1)
@@ -73,11 +73,11 @@ Base.minimum(t::Otsu) = t.minindex
 
 N. Otsu: "A threshold selection method from gray-level histograms", Automatica, 1975, 11, 285-296.
 """
-function fit(::Type{Otsu}, H::Histogram, n::Int; tol=1.0e-5)
+function fit(::Type{Otsu}, H::Histogram; tol=1.0e-5)
     N = length(H.weights)
 
     # calculate stats
-    S = histstats(H.weights, n)
+    S = histstats(H.weights)
 
     # Compute criterion function
     J = zeros(N)

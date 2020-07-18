@@ -151,9 +151,9 @@ end
 function adjustbasis!(M::Manifold, X::AbstractMatrix;
                       adjust_dim::Bool=false, adjust_dim_ratio::Float64=0.99)
     R = if outdim(M) > 0 && !adjust_dim
-        fit(PCA, X[:, points(M)]; pratio=1.0)
+        fit(PCA, @view X[:, points(M)]; pratio=1.0)
     else
-        fit(PCA, X[:, points(M)]; pratio = adjust_dim_ratio)
+        fit(PCA, @view X[:, points(M)]; pratio = adjust_dim_ratio)
     end
     if adjust_dim
         M.d = outdim(R)
@@ -212,17 +212,21 @@ function refstats(H::Vector{T}) where T<:Real
 	q=(A[end] .- A)./A[end]
 
 	u=B./A
-	v=(B[end] .- B)./(A[end] .- A)
+    v=(B[end] .- B)./(A[end] .- A)
+    v[isnan.(v)] .= 0.0
 
 	s2=C./A - u.^2
-    t2=(C[end] .- C)./(A[end]-A) - v.^2
+    t2=(C[end] .- C)./(A[end].-A) - v.^2
+    t2[isnan.(t2)] .= 0.0
 
 	return hcat(p, q, u, v, s2, t2)
 end
 
-function histstats(H::Vector{T}, n::Int) where T<:Real
+function histstats(H::Vector{T}) where T<:Real
     N = length(H)
     S = zeros(N,6)
+    n = sum(H)
+    # S = fill(eps(),N,6)
 
     S[1, 1] = H[1]/n
     S[1, 3] = 1.0
@@ -267,11 +271,8 @@ function find_global_min(J::Vector{T}, tol::T) where T<:Real
     end
 
     # Find global minima of criterion funtion if exists
-    # find first minimum
-    lmin = 1
-    while lmin<N && !M[lmin]
-        lmin += 1
-    end
+    lmin = findfirst(isequal(true),M)
+    lmin = lmin === nothing ? 1 : lmin
 
     depth = 0.0
     global_min = 0
@@ -284,23 +285,23 @@ function find_global_min(J::Vector{T}, tol::T) where T<:Real
             while rmin<N && M[rmin]
                 rmin += 1
             end
-            loc_min=( lmin + rmin - 1 ) / 2
+            loc_min=( lmin + rmin - 1 ) >> 1
 
             # Monotonically ascend to the left
-            lheight = round(Int, loc_min)
+            lheight = loc_min
             while lheight > 1 && J[lheight-1] >= J[lheight]
                 lheight -= 1
             end
 
             # Monotonically ascend to the right
-            rheight = round(Int, loc_min)
+            rheight = loc_min
             while rheight < N && J[rheight] <= J[rheight+1]
                 rheight += 1
             end
 
             # Compute depth
             local_depth = 0
-            local_depth = (J[lheight] < J[rheight] ? J[lheight] : J[rheight]) - J[round(Int, loc_min)]
+            local_depth = (J[lheight] < J[rheight] ? J[lheight] : J[rheight]) - J[loc_min]
 
             if local_depth > depth
                 depth = local_depth
