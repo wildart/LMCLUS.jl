@@ -1,7 +1,7 @@
 using Distributed
 addprocs(1)
 
-import LMCLUS
+using LMCLUS
 @everywhere using LMCLUS
 using Test
 

@@ -14,11 +14,13 @@ function separation(::Type{T}, xs::Vector{S};
 
         minIdx = minimum(thresh)
         s = stats(thresh)
-        threshold = minX + (minIdx + 1)*(maxX - minX)/N
+        threshold = minX + (minIdx)*(maxX - minX)/N
+        # println(s[minIdx,:])
         discriminability = (abs(s[minIdx,3]-s[minIdx,4]))/(sqrt(s[minIdx,5]+s[minIdx,6]))
 
         Separation(depth(thresh), discriminability, threshold, minIdx, minX, maxX, bins)
     catch ex
+        # rethrow(ex)
         @logmsg TRACE "Separation error" ex
         Separation(0.0, 0.0, maxX, 0, minX, maxX, bins) # threshold is set to maximal element
     end
@@ -42,16 +44,23 @@ function fit(::Type{Kittler}, H::Histogram; tol=1.0e-5)
     N = length(H.weights)
 
     # calculate stats
-    S = histstats(H.weights)
+    S = histstats(H.weights./sum(H.weights))
 
     # Compute criterion function
-    J = fill(-Inf, N-1)
+    J = fill(2*log(eps()), N-1)
     for t=1:(N-1)
+        @logmsg TRACE "Statistics" P₁=S[t,1] P₂=S[t,2] σ₁=S[t,5] σ₂=S[t,6]
         if S[t,1]!=0 && S[t,2]!=0 && S[t,5]>0 && S[t,6]>0
-            J[t] = 1 + 2*(S[t,1]*log(sqrt(S[t,5])) + S[t,2]*log(sqrt(S[t,6]))) - 2*(S[t,1]*log(S[t,1]) + S[t,2]*log(S[t,2]))
+            σ₁ = sqrt(max(0, S[t,5]))
+            logσ₁ = log(σ₁ == 0 ? eps() : σ₁)
+            σ₂ = sqrt(max(0, S[t,6]))
+            logσ₂ = log(σ₂ == 0 ? eps() : σ₂)
+            ses = S[t,1]*logσ₁ + S[t,2]*logσ₂
+            se = S[t,1]*log(S[t,1]) + S[t,2]*log(S[t,2])
+            J[t] = 1 + 2*ses - 2*se
         end
     end
-    @logmsg DEBUG_SEPARATION "Kittler criterion function" J
+    @logmsg DEBUG_SEPARATION "Kittler criterion function" J=J' extrema=extrema(J)
 
     # Global minimum parameters
     depth, global_min = find_global_min(J, tol)
@@ -77,16 +86,16 @@ function fit(::Type{Otsu}, H::Histogram; tol=1.0e-5)
     N = length(H.weights)
 
     # calculate stats
-    S = histstats(H.weights)
+    S = histstats(H.weights./sum(H.weights))
 
     # Compute criterion function
-    J = zeros(N)
-    for t in 1:N
-        varb = S[t,1]*S[t,2]*(S[t,4]-S[t,3])^2
-        varw = S[t,1]*S[t,5] - S[t,2]*S[t,6]
-        J[t] = varb/varw
+    J = zeros(N-1)
+    for t in 1:N-1
+        σb = S[t,1]*S[t,2]*(S[t,4]-S[t,3])^2
+        σw = S[t,1]*S[t,5]^2 - S[t,2]*S[t,6]^2
+        J[t] = σb/σw
     end
-    @logmsg DEBUG_SEPARATION "Otsu criterion function" J
+    @logmsg DEBUG_SEPARATION "Otsu criterion function" J=J'
 
     # Global minimum parameters
     depth, global_min = find_global_min(J, tol)

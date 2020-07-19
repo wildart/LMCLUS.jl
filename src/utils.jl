@@ -225,29 +225,27 @@ end
 function histstats(H::Vector{T}) where T<:Real
     N = length(H)
     S = zeros(N,6)
-    n = sum(H)
-    # S = fill(eps(),N,6)
 
-    S[1, 1] = H[1]/n
+    S[1, 1] = H[1]
     S[1, 3] = 1.0
     S[1, 2] = 1.0 - S[1, 1]
-    S[N-1, 2] = H[N]/n
+    S[N-1, 2] = H[N]
     S[N-1, 4] = N
     j = N
     for i in 2:N
-        P = H[i]/n
+        P = H[i]
         S[i, 1] = S[i-1, 1] + P
-        A = S[i-1, 1]*n
+        A = S[i-1, 1]
         if (A + H[i]) != 0
             S[i, 3] = (S[i-1, 3]*A + H[i]*i)/(A + H[i])
             S[i, 5] = ((S[i-1, 5] + S[i-1, 3]*S[i-1, 3])*A + H[i]*i*i)/(A + H[i]) - S[i, 3]*S[i, 3]
         end
 
-        S[j-1, 2] = S[j, 2] + H[j]/n
-        ΔA = S[j-1, 2]*n
+        S[j-1, 2] = S[j, 2] + H[j]
+        ΔA = S[j-1, 2]
         if ΔA != 0
-            S[j-1, 4] = (S[j, 4]*S[j, 2]*n + H[j]*j)/ΔA
-            S[j-1, 6] = ((S[j, 6] + S[j, 4]*S[j, 4])*S[j, 2]*n + H[j]*j*j)/ΔA - S[j-1, 4]*S[j-1, 4]
+            S[j-1, 4] = (S[j, 4]*S[j, 2] + H[j]*j)/ΔA
+            S[j-1, 6] = ((S[j, 6] + S[j, 4]*S[j, 4])*S[j, 2] + H[j]*j*j)/ΔA - S[j-1, 4]*S[j-1, 4]
         end
         j -= 1
     end
@@ -260,7 +258,7 @@ function find_global_min(J::Vector{T}, tol::T) where T<:Real
 
     # Mark minima
     M = zeros(Bool,N)
-    if N-1 >= 1
+    if N > 1
         prev = J[2] - J[1]
         curr = 0.0
         for i=2:(N-1)
@@ -269,10 +267,14 @@ function find_global_min(J::Vector{T}, tol::T) where T<:Real
             prev=curr
         end
     end
+    @logmsg DEBUG_SEPARATION "Local minima" M=M'
+
+    # Special case: flat minimum so separate at the first bin
+    all(M[2:end-1]) && length(M)>2 && return (Inf, 1)
 
     # Find global minima of criterion funtion if exists
     lmin = findfirst(isequal(true),M)
-    lmin = lmin === nothing ? 1 : lmin
+    lmin === nothing && throw(LMCLUSException("No minimum found. Presume unimode histogram."))
 
     depth = 0.0
     global_min = 0

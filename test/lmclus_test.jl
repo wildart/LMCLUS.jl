@@ -42,11 +42,11 @@ import Random
 
 	# test separation calculations
 	M = [297.654, -183.908, -164.718, -339.345, -53.5994, -142.06, -207.939, -180.871, 469.81, 190.212]
-	B = [0.0114666 0.20954 -0.371882 0.0527596 0.429496 -0.0887774 0.0872738 0.734395 0.121809 -0.246463]'
-	s = LMCLUS.find_separation(data, M, B, p, Random.GLOBAL_RNG)
+	B = [0.0114666 0.20954 -0.371882 0.0527596 0.429496 -0.0887774 0.0872738 0.734395 0.121809 -0.246463]' |> Matrix
+	s = LMCLUS.find_separation(data, M, B, p, MersenneTwister())
 	@test typeof(s) == LMCLUS.Separation
 	@test criteria(s) ≈ 7.285358462818518
-	@test threshold(s) ≈ 876.2634381305518
+	@test threshold(s) ≈ 852 atol=1.0
 
 	# run clustering
 	res = lmclus(data, p)
