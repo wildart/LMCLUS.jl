@@ -331,13 +331,13 @@ end
 
 "Calculate MDL for the manifold"
 function calculate(::Type{MT}, M::Manifold{T}, X::AbstractMatrix{T}, Pm::Int, Pd::Int;
-                   ɛ::T = 1e-2, tot::Int = 1000, tol = 1e-8) where {MT<:MethodType, T<:AbstractFloat}
+                   ɛ::T = 1e-3, tot::Int = 1000, tol = 1e-18) where {MT<:MethodType, T<:AbstractFloat}
     return modeldl(MT, M, X, Pm) + datadl(MT, M, X, Pd, ɛ, tot, tol)
 end
 
 "Calculate MDL for the clustering"
 function calculate(::Type{MT}, Ms::Vector{Manifold}, X::AbstractMatrix{T}, Pm::Int, Pd::Int;
-             ɛ::T=1e-2, tot::Int = 1000, tol = 1e-8) where {MT<:MethodType, T<:AbstractFloat}
+             ɛ::T=1e-3, tot::Int = 1000, tol = 1e-18) where {MT<:MethodType, T<:AbstractFloat}
     return sum(calculate(MT, m, X[:,points(m)], Pm, Pd, ɛ=ɛ, tot=tot, tol=tol) for m in Ms)
 end
 
@@ -345,14 +345,14 @@ end
 
 # Compatibility
 function mdl(M::Manifold{T}, X::AbstractMatrix{T}, Pm::Int, Pd::Int;
-             dist::Symbol = :OptimalQuant, ɛ::T = 1e-2,
+             dist::Symbol = :OptimalQuant, ɛ::T = 1e-3,
              tot::Int = 1000, tol = 1e-8) where T<:AbstractFloat
     mdltype = Core.eval(MDL, dist)
     return MDL.calculate(mdltype, M, X, Pm, Pd, ɛ=ɛ)
 end
 
 function mdl(Ms::Vector{Manifold}, X::AbstractMatrix{T}, Pm::Int, Pd::Int;
-             dist::Symbol = :OptimalQuant, ɛ::T = 1e-2,
+             dist::Symbol = :OptimalQuant, ɛ::T = 1e-3,
              tot::Int = 1000, tol = 1e-8) where T<:AbstractFloat
     return sum(mdl(m,X,Pm,Pd,dist=dist,ɛ=ɛ,tot=tot,tol=tol) for m in Ms)
 end

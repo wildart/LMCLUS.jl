@@ -1,9 +1,8 @@
 using LMCLUS
-using Combinatorics
 using Test
 using Statistics
 using DelimitedFiles
-import Random
+using Random
 
 @testset "Clustering" begin
 
@@ -54,7 +53,8 @@ import Random
 	@test sum(counts(res)) == size(ds, 1)
 
 	cnts = counts(res)
-	@testset "Label Match" for idxs in combinations(1:nclusters(res),2)
+	nc = nclusters(res)
+	@testset "Label Match" for idxs in [(i,j) for i in 1:nc, j in 1:nc if i < j]
 		i = idxs[1]
 		j = idxs[2]
 		@test length(symdiff(points(manifold(res,i)), points(manifold(res, j)))) == cnts[i] + cnts[j]

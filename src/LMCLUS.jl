@@ -140,7 +140,7 @@ function find_manifold(X::AbstractMatrix{T}, index::Vector{Int},
     filtered = Int[]
     selected = copy(index)
     N = size(X,1) # full space dimension
-    best_manifold = Manifold{T}(params.max_dim, index)
+    best_manifold = Manifold{T}(params.min_dim, index)
     best_separation = Separation()
 
     sep_dim = params.min_dim
@@ -166,14 +166,14 @@ function find_manifold(X::AbstractMatrix{T}, index::Vector{Int},
                 # check if the adjusted basis provides better separation
                 previous_outdim = outdim(best_manifold)
                 adjustbasis!(best_manifold, X, adjust_dim=params.dim_adjustment, adjust_dim_ratio=params.dim_adjustment_ratio)
-                @debug "manifold: perform basis adjustment..." outdim=outdim(best_manifold) previous_outdim
                 origin, basis = mean(best_manifold), projection(best_manifold)
+                @debug "manifold: perform basis adjustment..." outdim=outdim(best_manifold) previous_outdim origin basis
                 idxs = points(best_manifold)
                 sep = find_separation(view(X, :, idxs), origin, basis, params, prngs[1])
             elseif state == :BOUND && params.bounded_cluster && size(best_manifold) > 0
                 # check if the bounded cluster provides better separation
-                @debug "manifold: separating within manifold subspace..."
                 origin, basis = mean(best_manifold), projection(best_manifold)
+                @debug "manifold: separating within manifold subspace..." origin basis
                 idxs = points(best_manifold)
                 sep = find_separation(view(X, :, idxs), origin, basis, params, prngs[1], ocss = true)
             else
