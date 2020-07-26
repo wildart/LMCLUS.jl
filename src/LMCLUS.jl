@@ -149,7 +149,7 @@ function find_manifold(X::AbstractMatrix{T}, index::Vector{Int},
         state = :SEPARATION
 
         # get thresholds
-        θ, σ = Inf, Inf
+        θ, σ = T(Inf), T(Inf)
 
         # search appropriate linear manifold subspace for best distance separation
         while true
