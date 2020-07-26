@@ -38,22 +38,22 @@ univar(interval::Vector{T}) where T<:AbstractFloat = (1//12)*(interval).^2
 quanterror(intervals, N_k_opt) = sum(univar(intervals./N_k_opt))
 
 """Optimal quantization of the interval"""
-function optquant(intervals::Vector{T}, ɛ::T; tot::Int = 1000, tol = 1e-6) where T<:AbstractFloat
-    intervals[isnan.(intervals)]  .= eps() # remove nans
-    intervals[intervals .< eps()] .= eps() # remove 0s
+function optquant(intervals::Vector{T}, ɛ::Real; tot::Int=1000, tol::Real=1e-6) where {T<:AbstractFloat}
+    intervals[isnan.(intervals)]  .= eps(T) # remove nans
+    intervals[intervals .< eps()] .= eps(T) # remove 0s
     intervals[isinf.(intervals)]  .= 1.0   # remove inf
 
     # Setup C bounds
     K = length(intervals)
-    C = 0.
-    Cmin = 0.
+    C = zero(T)
+    Cmin = zero(T)
     Cmax = broadcast(+, log.(typemax(UInt)./intervals).*K, sum(log.(intervals))) |> minimum
 
     i = 1
     N_k_opt = ones(UInt, K)
     err_opt = Inf
     while i < tot
-        C = Cmax - (Cmax - Cmin)/2.
+        C = Cmax - (Cmax - Cmin)/2
         N_k_opt = optbins(intervals, C)
         err_opt = quanterror(intervals, N_k_opt)
         err_diff = err_opt - ɛ^2
@@ -136,7 +136,7 @@ end
     measures based on the minimum description length principle”
 """
 function datadl(::Type{ZeroDim}, C::Manifold{T}, X::AbstractMatrix{T},
-                P::Int, ɛ::T, tot::Int, tol::T) where T<:AbstractFloat
+                P::Int, ɛ::Real, tot::Int, tol::Real) where T<:AbstractFloat
     N = size(X,1)  # space dimension
     μ = mean(C)    # manifold translation
     n = size(C)  # size of cluster
@@ -183,7 +183,7 @@ end
 """Size independent data description length: L(X|SI)
 """
 function datadl(::Type{SizeIndependent}, C::Manifold{T}, X::AbstractMatrix{T},
-                P::Int, ɛ::T, tot::Int, tol::T) where T<:AbstractFloat
+                P::Int, ɛ::Real, tot::Int, tol::Real) where T<:AbstractFloat
     M = outdim(C)  # manifold dimension
     N = size(X,1)  # space dimension
 
@@ -209,7 +209,7 @@ end
     are uniformly distributed around the cluster manifold.
 """
 function datadl(::Type{Uniform}, C::Manifold{T}, X::AbstractMatrix{T},
-                P::Int, ɛ::T, tot::Int, tol::T) where T<:AbstractFloat
+                P::Int, ɛ::Real, tot::Int, tol::Real) where T<:AbstractFloat
     M = outdim(C)  # manifold dimension
     n = size(X,2)  # size of cluster
 
@@ -230,7 +230,7 @@ end
     are normally distributed around the cluster manifold.
 """
 function datadl(::Type{Gaussian}, C::Manifold{T}, X::AbstractMatrix{T},
-                P::Int, ɛ::T, tot::Int, tol::T) where T<:AbstractFloat
+                P::Int, ɛ::Real, tot::Int, tol::Real) where T<:AbstractFloat
     N, n = size(X)  # space dimension & size
     M = outdim(C)   # manifold dimension
     μ = mean(C)     # manifold translation
@@ -259,7 +259,7 @@ end
     calculate entropy, thus number of bits.
 """
 function datadl(::Type{Empirical}, C::Manifold{T}, X::AbstractMatrix{T},
-                P::Int, ɛ::T, tot::Int, tol::T) where T<:AbstractFloat
+                P::Int, ɛ::Real, tot::Int, tol::Real) where T<:AbstractFloat
     N, n = size(X) # space dimension & size
     M = outdim(C)  # manifold dimension
 
@@ -299,7 +299,7 @@ end
     calculate entropy, thus number of bits.
 """
 function datadl(::Type{OptimalQuant}, C::Manifold{T}, X::AbstractMatrix{T},
-                P::Int, ɛ::T, tot::Int, tol::T) where T<:AbstractFloat
+                P::Int, ɛ::Real, tot::Int, tol::Real) where T<:AbstractFloat
     M = outdim(C)  # manifold dimension
     n = size(X,2)  # size of cluster
 
@@ -331,13 +331,13 @@ end
 
 "Calculate MDL for the manifold"
 function calculate(::Type{MT}, M::Manifold{T}, X::AbstractMatrix{T}, Pm::Int, Pd::Int;
-                   ɛ::T = 1e-3, tot::Int = 1000, tol = 1e-18) where {MT<:MethodType, T<:AbstractFloat}
+                   ɛ::Real = 1e-3, tot::Int=1000, tol::Real=1e-18) where {MT<:MethodType, T<:AbstractFloat}
     return modeldl(MT, M, X, Pm) + datadl(MT, M, X, Pd, ɛ, tot, tol)
 end
 
 "Calculate MDL for the clustering"
 function calculate(::Type{MT}, Ms::Vector{Manifold}, X::AbstractMatrix{T}, Pm::Int, Pd::Int;
-             ɛ::T=1e-3, tot::Int = 1000, tol = 1e-18) where {MT<:MethodType, T<:AbstractFloat}
+                   ɛ::Real=1e-3, tot::Int=1000, tol::Real=1e-18) where {MT<:MethodType, T<:AbstractFloat}
     return sum(calculate(MT, m, X[:,points(m)], Pm, Pd, ɛ=ɛ, tot=tot, tol=tol) for m in Ms)
 end
 

@@ -3,23 +3,23 @@ abstract type Thresholding end
 
 ## histogram separation type
 "Cluster separation parameters"
-struct Separation
+struct Separation{T<:AbstractFloat}
     "Separation depth (depth between separated histogram modes)"
-    depth::Float64
+    depth::T
     "Separation discriminability (width between separated histogram modes)"
-    discriminability::Float64
+    discriminability::T
     "Distance threshold value"
-    threshold::Float64
+    threshold::T
     "Global minimum as histogram bin index"
     globalmin::Int
     "Minimal distance"
-    mindist::Float64
+    mindist::T
     "Maximal distance"
-    maxdist::Float64
+    maxdist::T
     "Number of bins in the histogram"
     bins::Int
 end
-Separation() = Separation(0.0, 0.0, 0.0, 0, 0.0, 0.0, 0)
+Separation() = Separation{Float64}(0.0, 0.0, 0.0, 0, 0.0, 0.0, 0)
 
 # properties
 "Returns separation criteria value which is product of depth and discriminability."

@@ -1,6 +1,6 @@
 """Perform the dataset `xs` separation by thresholding a dataset `bins`ed histogram based on the algorith `T`"""
 function separation(::Type{T}, xs::Vector{S};
-                    bins = 20, tol = 1.0e-5) where {T <: Thresholding, S <: Real}
+                    bins = 20, tol::Real = 1.0e-5) where {T <: Thresholding, S <: Real}
     minX, maxX = extrema(xs)
 
     # get histogram
@@ -18,11 +18,11 @@ function separation(::Type{T}, xs::Vector{S};
         # println(s[minIdx,:])
         discriminability = (abs(s[minIdx,3]-s[minIdx,4]))/(sqrt(s[minIdx,5]+s[minIdx,6]))
 
-        Separation(depth(thresh), discriminability, threshold, minIdx, minX, maxX, bins)
+        Separation(convert(S, depth(thresh)), convert(S, discriminability), threshold, minIdx, minX, maxX, bins)
     catch ex
         # rethrow(ex)
         @logmsg TRACE "Separation error" ex
-        Separation(0.0, 0.0, maxX, 0, minX, maxX, bins) # threshold is set to maximal element
+        Separation(zero(S), zero(S), maxX, 0, minX, maxX, bins) # threshold is set to maximal element
     end
 end
 
@@ -40,7 +40,7 @@ Base.minimum(t::Kittler) = t.minindex
 
 J. Kittler & J. Illingworth: "Minimum Error Thresholding", Pattern Recognition, Vol 19, nr 1. 1986, pp. 41-47.
 """
-function fit(::Type{Kittler}, H::Histogram; tol=1.0e-5)
+function fit(::Type{Kittler}, H::Histogram; tol::Real=1.0e-5)
     N = length(H.weights)
 
     # calculate stats

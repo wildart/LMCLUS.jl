@@ -53,7 +53,7 @@ mutable struct Parameters
     "Enable creation of bounded linear manifold clusters"
     bounded_cluster::Bool
     "Separation threshold algorithm"
-    sep_algo::DataType
+    sep_algo::Type{<:Thresholding}
 
     Parameters(max_dim) = new(
         1,        # min_dim

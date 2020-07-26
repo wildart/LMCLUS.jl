@@ -234,20 +234,18 @@ function find_manifold(X::AbstractMatrix{T}, index::Vector{Int},
                     separations += 1
                 end
             end
-            @debug("Best manifold",
-                dim=outdim(best_manifold),
-                origin=mean(best_manifold),
-                basis=projection(best_manifold),
-                threshold=threshold(best_manifold),
-            )
+            # @debug("Best manifold",
+            #     dim=outdim(best_manifold),
+            #     origin=mean(best_manifold),
+            #     basis=projection(best_manifold),
+            #     threshold=threshold(best_manifold),
+            # )
         end
 
         if length(selected) <= params.min_cluster_size # no more points left - finish clustering
             @debug "Noise" minimum_cluster_size=params.min_cluster_size current_cluster_size=length(selected)
             break
         end
-
-        @debug "Separation not found" action=(sep_dim == params.max_dim ? "forming cluster" : "increasing dimension")
 
         # check compression ratio
         if params.mdl && outdim(best_manifold) > 0 && separations > 0
@@ -256,7 +254,7 @@ function find_manifold(X::AbstractMatrix{T}, index::Vector{Int},
             Pm = params.mdl_model_precision
             Pd = params.mdl_data_precision
             adjustbasis!(BM, X) # generate full basis - needed to calculate MDL
-            mmdl = MDL.calculate(params.mdl_algo, BM, BMdata, Pm, Pd, ɛ = params.mdl_quant_error)
+            mmdl = MDL.calculate(params.mdl_algo, BM, BMdata, Pm, Pd, ɛ = T(params.mdl_quant_error))
             mraw = MDL.calculate(MDL.Raw, BM, BMdata, Pm, Pd)
 
             cratio = mraw/mmdl
@@ -275,9 +273,10 @@ function find_manifold(X::AbstractMatrix{T}, index::Vector{Int},
             end
         end
 
-        sep_dim += 1
-        @debug "Increasing search dimension" dim=sep_dim
         !params.force_max_dim && separations > 0 && break
+
+        sep_dim += 1
+        @debug "Separation not found" action=(sep_dim == params.max_dim ? "forming cluster" : "increasing dimension") dim=sep_dim
     end
 
     # Cannot find any manifold in data then form last cluster
@@ -336,7 +335,9 @@ function find_separation_basis(X::AbstractMatrix{T}, lm_dim::Int,
     # reduce values of manifolds from remote sources
     best_sep, best_origin, best_basis = Separation(), zeros(T, 0), zeros(T, 0, 0)
     for (i, rr) in enumerate(bases)
-        sep, origin, basis, mt = fetch(rr)
+        res = fetch(rr)
+        # isa(res, Exception) && throw(res)
+        sep, origin, basis, mt = res
         if criteria(sep) > criteria(best_sep) # get largest separation
             best_sep = sep
             best_origin = origin
@@ -354,8 +355,8 @@ function sample_manifold(X::Matrix{T}, lm_dim::Int,
                          params::Parameters, prng::MersenneTwister,
                          num_samples::Int) where {T<:Real}
     best_sep = Separation()
-    best_origin = T[]
-    best_basis = zeros(0, 0)
+    best_origin = zeros(T, 0)
+    best_basis = zeros(T, 0, 0)
 
     for i in 1:num_samples
         sample = sample_points(X, lm_dim, rng=prng)
