@@ -148,18 +148,23 @@ function filter_separated(selected_points, X, O, B, S; ocss=false)
     return cluster_points, removed_points
 end
 
-function adjustbasis!(M::Manifold, X::AbstractMatrix;
-                      adjust_dim::Bool=false, adjust_dim_ratio::Float64=0.99)
-    R = if outdim(M) > 0 && !adjust_dim
-        fit(PCA, @view X[:, points(M)]; pratio=1.0)
-    else
-        fit(PCA, @view X[:, points(M)]; pratio = adjust_dim_ratio)
-    end
+function adjustbasis!(M::Manifold, X::AbstractMatrix{T};
+                      adjust_dim::Bool=false, adjust_dim_ratio::Real=0.99) where {T<:AbstractFloat}
+    pts = points(M)
+    MX = view(X, :, pts)
+    d,n = size(MX)
+    μ = mean(MX, dims=2)
+    Svd = svd(MX .- μ)
+    v = Svd.S
+    U = Svd.U
+    map!(x->abs2(x)/length(pts),v,v)
     if adjust_dim
-        M.d = outdim(R)
+        thres = sum(v)*convert(T,adjust_dim_ratio)
+        k = findfirst(v->v > thres, cumsum(v))
+        M.d = k === nothing ? d : k
     end
-    M.μ = mean(R)
-    M.basis = projection(R)
+    M.μ = vec(μ)
+    M.basis =  U
     return M
 end
 

@@ -3,7 +3,7 @@ module MDL
 using LinearAlgebra
 import Statistics: mean
 import StatsBase: fit, Histogram
-import ..LMCLUS: Manifold, indim, outdim, projection, threshold, points, hasfullbasis, project
+import ..LMCLUS: Manifold, indim, outdim, projection, threshold, points, hasfullbasis, project, LMCLUSResult
 
 # Various types for MDL calculation
 abstract type MethodType end
@@ -341,18 +341,26 @@ function calculate(::Type{MT}, Ms::Vector{Manifold}, X::AbstractMatrix{T}, Pm::I
     return sum(calculate(MT, m, X[:,points(m)], Pm, Pd, ɛ=ɛ, tot=tot, tol=tol) for m in Ms)
 end
 
+function calculate!(::Type{MT}, C::LMCLUSResult, X::AbstractMatrix{T}, Pm::Int, Pd::Int;
+                   ɛ::Real=1e-3, d=-1) where {MT<:MethodType, T<:AbstractFloat}
+    mdl = 0
+    for (i, m) in enumerate(C.manifolds)
+        pts = points(m)
+        MX = view(X, :, pts)
+        μ = mean(MX, dims=2)
+        Svd = svd(MX .- μ, full=true)
+        U = Svd.U
+        mtmp = Manifold((d >= 0 ? d : m.d), vec(μ), U, pts)
+        mdl += calculate(MT, mtmp, MX, Pm, Pd, ɛ=ɛ)
+    end
+    mdl
 end
 
-# Compatibility
-function mdl(M::Manifold{T}, X::AbstractMatrix{T}, Pm::Int, Pd::Int;
-             dist::Symbol = :OptimalQuant, ɛ::T = 1e-3,
-             tot::Int = 1000, tol = 1e-8) where T<:AbstractFloat
-    mdltype = Core.eval(MDL, dist)
-    return MDL.calculate(mdltype, M, X, Pm, Pd, ɛ=ɛ)
+function compression(::Type{MT}, C::LMCLUSResult, X::AbstractMatrix{T}, Pm::Int,
+                     Pd::Int; kwargs...) where {MT<:MethodType, T<:AbstractFloat}
+    raw = Pm * length(X)
+    mdl = calculate!(MT, C, X, Pm, Pd; kwargs...)
+    raw/mdl
 end
 
-function mdl(Ms::Vector{Manifold}, X::AbstractMatrix{T}, Pm::Int, Pd::Int;
-             dist::Symbol = :OptimalQuant, ɛ::T = 1e-3,
-             tot::Int = 1000, tol = 1e-8) where T<:AbstractFloat
-    return sum(mdl(m,X,Pm,Pd,dist=dist,ɛ=ɛ,tot=tot,tol=tol) for m in Ms)
 end
