@@ -47,11 +47,17 @@ mutable struct Manifold{T<:AbstractFloat}
     "Linear manifold subspace distance threshold"
     σ::T
 end
-Manifold(d::Int, μ::Vector{T}, basis::Matrix{T}, pnts::Vector{Int}) where T<:AbstractFloat =
+Manifold(d::Int, μ::Vector{T}, basis::Matrix{T}, pnts::Vector{Int}) where {T<:AbstractFloat} =
     Manifold(d, μ, basis, pnts, zero(T), zero(T))
-Manifold{T}(d::Int, pnts::Vector{Int}) where T<:AbstractFloat = Manifold(d, zeros(T,d), zeros(T,d,d), pnts)
-Manifold{T}(d::Int) where T<:AbstractFloat = Manifold(d, Int[])
+Manifold{T}(d::Int, pnts::Vector{Int}) where {T<:AbstractFloat} = Manifold(d, zeros(T,d), zeros(T,d,d), pnts)
+Manifold{T}(d::Int) where {T<:AbstractFloat} = Manifold{T}(d, Int[])
 Manifold() = Manifold{Float64}(0)
+
+function Manifold(data::AbstractMatrix{T}, pnts::Vector{Int}) where {T<:AbstractFloat}
+    X = @view data[:, pnts]
+    R = fit(PCA, X; pratio=1.0)
+    Manifold(outdim(R), mean(R), projection(R), pnts)
+end
 
 Base.copy(M::Manifold) = Manifold(outdim(M),mean(M),projection(M),points(M),threshold(M)...)
 

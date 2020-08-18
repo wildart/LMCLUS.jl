@@ -23,6 +23,12 @@ end
 manifold(R::LMCLUSResult, idx::Int) = R.manifolds[idx]
 manifolds(R::LMCLUSResult) = R.manifolds
 
+function setdim!(R::LMCLUSResult, d::Int)
+    for i in 1:nclusters(R)
+        R.manifolds[i].d = d
+    end
+end
+
 """Iterative refinement of LMCLUS clustering
 
     refine(res::LMCLUSResult, data::AbstractMatrix, dfun::Function, efun::Function; tol::Real = 10.0, maxiter::Integer = 100)
@@ -122,4 +128,12 @@ function clearoutliers(res::LMCLUSResult, data::AbstractMatrix,
     end
 
     return LMCLUSResult(M, Separation[])
+end
+
+points(cl::C, i::Int) where {C <: ClusteringResult} = findall(i .∈  assignments(cl))
+
+function LMCLUSResult(cl::C, data::AbstractMatrix, d=0) where {C <: ClusteringResult}
+    R = LMCLUSResult([Manifold(data, points(cl, i)) for i in 1:nclusters(cl)], Separation[])
+    d > 0 && setdim!(R, d)
+    return R
 end
